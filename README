@@ -1,0 +1,14 @@
+uri-template-router: Match a URI to a URI template
+
+Usage:
+
+var r = new Router;
+r.addTemplate('http://example.com/root{/base}{/a*}{?b*}{#c}', 'some-argument');
+r.resolveURI('http://example.com/root/q/1/2/3?key1=one&key2=2');
+
+Returns:
+
+[ { pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
+    arg: 'some-argument',
+    bindings: { base: 'q', a: [ '1', '2', '3' ], b: [ 'key1=one', 'key2=2' ] } } ]
+
