@@ -24,32 +24,40 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 			// Else, assume the first character is a modifier
 			var modifier = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
 			if(modifier==''){
+				var prefix = '';
 				// unreserved
 				var regexFirst = /^([A-Za-z0-9\_\.\~\-]|%[0-9A-Z]{2})*/;
 			}else if(modifier=='+'){
+				var prefix = '';
 				// ( unreserved / reserved / pct-encoded )
 				// unreserved: ALPHA / DIGIT / "-" / "." / "_" / "~"
 				// reserved: :/?#[]@!$&'()*+,;=
 				var regexFirst = /^([a-zA-Z0-9\-\.\_\~\:\/\?\#\[\]\@\!\$\&\'\(\)\*\+\,\;\=]|%[0-9A-Z]{2})*/;
 			}else if(modifier=='#'){
+				var prefix = '#';
 				// ( unreserved / reserved / pct-encoded )
 				var regexFirst = /^#([a-zA-Z0-9\-\.\_\~\:\/\?\#\[\]\@\!\$\&\'\(\)\*\+\,\;\=]|%[0-9A-Z]{2})*/;
 			}else if(modifier=='.'){
+				var prefix = '.';
 				// unreserved
 				var regexFirst = /^\.([A-Za-z0-9_\.\~\-\/]|%[0-9A-Z]{2})*/;
 			}else if(modifier=='/'){
+				var prefix = '/';
 				// unreserved
 				var regexFirst = /^\/([A-Za-z0-9_\.\~\-]|%[0-9A-Z]{2})*/;
 				var regexNext = regexFirst;
 			}else if(modifier==';'){
+				var prefix = ';';
 				// Go through each variable 
 				var regexFirst = /^;([A-Za-z0-9_\.\~\-]|%[0-9A-Z]{2})*/;
 				var regexNext = regexFirst;
 			}else if(modifier=='?'){
+				var prefix = '?';
 				// Go through each variable 
 				var regexFirst = /^\?([A-Za-z0-9_\.\~\-=]|%[0-9A-Z]{2})*/;
 				var regexNext = /^&([A-Za-z0-9_\.\~\-=]|%[0-9A-Z]{2})*/;
 			}else if(modifier=='&'){
+				var prefix = '&';
 				// Go through each variable 
 				var regexFirst = /^&([A-Za-z0-9_\.\~\-=]|%[0-9A-Z]{2})*/;
 				var regexNext = regexFirst;
@@ -71,7 +79,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				if(varnames[varname]){
 					throw new Error('Variable '+JSON.stringify(vn)+' is already used');
 				}
-				var exprinfo = { expr:patternBody, name:varname, modifier:modifier, regexp:regexFirst, itemRegex:explode, end:{} };
+				var exprinfo = { expr:patternBody, name:varname, modifier:modifier, prefix:prefix, regexp:regexFirst, itemRegex:explode, end:{} };
 				var branches = node[T_EXPR] = node[T_EXPR] || [];
 				branches.push(exprinfo);
 				node = exprinfo.end;
@@ -108,7 +116,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 					return;
 				}
 				var endpos = i+match[0].length;
-				var encoded = match[0].substring(alt.modifier.length);
+				var encoded = match[0].substring(alt.prefix.length);
 				var value = decodeURIComponent(encoded);
 				// Explode flag indicates we search for multiple items in an array
 				if(alt.itemRegex){
@@ -118,7 +126,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 						var match = uri.substring(endpos).match(alt.itemRegex);
 						if(!match) break;
 						endpos = endpos+match[0].length;
-						var encoded = match[0].substring(alt.modifier.length);
+						var encoded = match[0].substring(alt.prefix.length);
 						value.push(decodeURIComponent(encoded));
 					}
 				}
