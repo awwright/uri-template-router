@@ -1,10 +1,10 @@
 
-= URI Template Router
+# URI Template Router
 
 Match a URI to a URI template
 
 
-== Usage
+## Usage
 
 ```javascript
 var r = new Router;
@@ -22,9 +22,9 @@ r.resolveURI('http://example.com/root/q/1/2/3?key1=one&key2=2'); // returns:
 [ { pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
     arg: 'some-argument',
     bindings: {
-	    base: 'q',
-		 a: [ '1', '2', '3' ],
-		 b: [ 'key1=one', 'key2=2' ],
+       base: 'q',
+       a: [ '1', '2', '3' ],
+       b: [ 'key1=one', 'key2=2' ],
 } } ]
 
 r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // returns:
@@ -33,12 +33,12 @@ r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // retur
     bindings: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' } } ]
 ```
 
-== URI Template Format
+## URI Template Format
 
 URI Templates follow the RFC 6570 syntax. URI Template Router supports only the subset of syntax that can be reversed back into the original variables without data loss:
 
 * Variables may not be re-used.
-* The prefix modifier is treated as part of the variable name. The template <{/x:1,x}> will return values like `{"x:1":"a", "x":"abc"}`. Since they are separate variables, the values might not even match. For example, the URI </a/ZZ/> will return `{"x:1":"a", "x":"ZZ"}`.
+* The prefix modifier is treated as part of the variable name. The template `<{/x:1,x}>` will return values like `{"x:1":"a", "x":"abc"}`. Since they are separate variables, the values might not even match. For example, the URI `</a/ZZ/>` will return `{"x:1":"a", "x":"ZZ"}`.
 * The explode modifier will always type that variable as an array, and can only be used with expression modifiers with certain separators.
 
 URI Templates in URI Template Router constist of a sequence of literal characters and/or expressions. Literal characters must appear and must be matched exactly. URI Template Router does not normalize patterns or URIs, you should perform normalization before testing a URI against the router.
