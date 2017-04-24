@@ -115,17 +115,15 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 					check(alt.end, i, bindings);
 					return;
 				}
-				var endpos = i+match[0].length;
+				var endpos = i + match[0].length;
 				var encoded = match[0].substring(alt.prefix.length);
 				var value = decodeURIComponent(encoded);
 				// Explode flag indicates we search for multiple items in an array
 				if(alt.itemRegex){
 					value = [value];
 					// Search for additional items
-					while(true){
-						var match = uri.substring(endpos).match(alt.itemRegex);
-						if(!match) break;
-						endpos = endpos+match[0].length;
+					for(var match; match=uri.substring(endpos).match(alt.itemRegex); ){
+						endpos += match[0].length;
 						var encoded = match[0].substring(alt.prefix.length);
 						value.push(decodeURIComponent(encoded));
 					}
