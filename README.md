@@ -1,8 +1,7 @@
 
 # URI Template Router
 
-Match a URI to a URI template
-
+Match a URI to a URI template from a set of templates.
 
 ## Usage
 
@@ -59,6 +58,3 @@ Variables are alphanumeric, and optionally end with a variable modifier:
 
 * The explode modifier `*` indicates the variable will be an array
 * The prefix modifier `:n` (for some positive integer `n`) indicates the variable is a string that has a maximum length.
-
-== 
-
