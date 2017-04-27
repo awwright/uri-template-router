@@ -93,29 +93,39 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 	node[T_END].push({ pattern:uri, arg:arg });
 }
 
+function State(n, i, v, next){
+	this.n = n;
+	this.i = i;
+	this.v = v;
+	this.next = next;
+}
+
 Router.prototype.resolveURI = function resolve(uri, flags){
 	var alternatives = [];
-	function check(node, i, bindings){
+	for(var stack = new State(this.tree, 0, undefined, null); stack; stack=stack.next){
+		var node = stack.n;
+		var i = stack.i;
+		var bindings = stack.v;
 		var chr = uri[i];
 		if(chr==undefined && node[T_END]){
 			node[T_END].forEach(function(alt){
 				alternatives.push({pattern:alt.pattern, arg:alt.arg, bindings:bindings});
 			});
-			return;
+			continue;
 		}
 		if(node[chr]){
 			var leaf = node[chr];
-			check(leaf, i+1, bindings);
+			stack.next = new State(leaf, i+1, bindings, stack.next);
 		}
 		if(node[T_EXPR]){
 			node[T_EXPR].forEach(function(alt){
 				// Search for pattern
 				var match = uri.substring(i).match(alt.regexp);
 				if(!match){
-					check(alt.end, i, bindings);
+					stack.next = new State(alt.end, i, bindings, stack.next);
 					return;
 				}
-				var endpos = i + match[0].length;
+				var endpos = i+match[0].length;
 				var encoded = match[0].substring(alt.prefix.length);
 				var value = decodeURIComponent(encoded);
 				// Explode flag indicates we search for multiple items in an array
@@ -123,7 +133,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 					value = [value];
 					// Search for additional items
 					for(var match; match=uri.substring(endpos).match(alt.itemRegex); ){
-						endpos += match[0].length;
+						endpos = endpos+match[0].length;
 						var encoded = match[0].substring(alt.prefix.length);
 						value.push(decodeURIComponent(encoded));
 					}
@@ -132,10 +142,9 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				var nb = {};
 				for(var n in bindings) nb[n]=bindings[n];
 				nb[alt.name] = value;
-				check(alt.end, endpos, nb);
+				stack.next = new State(alt.end, endpos, nb, stack.next);
 			});
 		}
 	}
-	check(this.tree, 0);
 	return alternatives;
 }
