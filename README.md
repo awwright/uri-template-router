@@ -9,7 +9,8 @@ Match a URI to a URI template from a set of templates.
 var r = new Router;
 
 r.addTemplate('http://example.com/', {}, 'index');
-r.addTemplate('http://example.com/root{/base}{/a*}{?b*}{#c}', {}, 'complex');
+r.addTemplate('http://example.com/q{n}', {}, 'q_page');
+r.addTemplate('http://example.com/root{/base}{/a*}{?b*}{#c}', {}, 'complex_type');
 r.addTemplate('http://example.com/blog{/y,m,d,slug}', {}, 'blog_post');
 
 r.resolveURI('http://example.com/'); // returns:
@@ -17,9 +18,14 @@ r.resolveURI('http://example.com/'); // returns:
     arg: 'index',
     bindings: undefined } ]
 
+r.resolveURI('http://example.com/qfoo'); // returns:
+[ { pattern: 'http://example.com/q{n}',
+    arg: 'q_page',
+    bindings: { n: 'foo' } } ]
+
 r.resolveURI('http://example.com/root/q/1/2/3?key1=one&key2=2'); // returns:
 [ { pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
-    arg: 'some-argument',
+    arg: 'complex_type',
     bindings: {
        base: 'q',
        a: [ '1', '2', '3' ],
