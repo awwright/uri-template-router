@@ -1,0 +1,59 @@
+[
+	{
+		"templates": [
+			"http://{authority}/"
+		],
+		"uris": {
+			"http://example.com/": { "authority": "example.com" },
+			"http://example.org/": { "authority": "example.org" },
+			"http://www.example.net/": { "authority": "www.example.net" }
+		}
+	},
+	{
+		"templates": [
+			"http://localhost/{document_any}",
+			"http://localhost/{document_txt}.txt",
+			"http://localhost/{document_html}.html",
+			"http://localhost/{document_json}.json"
+		],
+		"uris": {
+			"http://localhost/about": { "document_any": "about" },
+			"http://localhost/about.txt": { "document_txt": "about" },
+			"http://localhost/about.html": { "document_html": "about" },
+			"http://localhost/about.json": { "document_json": "about" }
+		}
+	},
+	{
+		"templates": [
+			"http://localhost{/path*}"
+		],
+		"uris": {
+			"http://localhost/": { "path": [] },
+			"http://localhost/a": { "path": [ "a" ] }
+		}
+	},
+	{
+		"templates": [
+			"http://localhost/",
+			"http://localhost{/path*}"
+		],
+		"uris": {
+			"http://localhost/": {},
+			"http://localhost/a": { "path": [ "a" ] }
+		}
+	},
+	{
+		"templates": [
+			"http://example.com/",
+			"http://example.com/root{/base}{/a*}{?b*}{#c}",
+			"http://example.com/blog{/y,m,d,slug}",
+			"http://example.com{/path*}"
+		],
+		"uris": {
+			"http://example.com/": {},
+			"http://example.com/root": { "path": [] },
+			"http://example.com/root/a/b/c": { "base":"a", "a": [ "b", "c" ] },
+			"http://example.com/root/a/b/c?d&e": { "base":"a", "a": [ "b", "c" ], "b":[ "d", "e" ] }
+		}
+	}
+]
