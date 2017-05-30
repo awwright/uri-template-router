@@ -11,6 +11,16 @@
 	},
 	{
 		"templates": [
+			"http:{+hierpart}"
+		],
+		"uris": {
+			"http://example.com/": { "hierpart": "//example.com/" },
+			"http://example.org/": { "hierpart": "//example.org/" },
+			"http://www.example.net/": { "hierpart": "//www.example.net/" }
+		}
+	},
+	{
+		"templates": [
 			"http://localhost/{document_any}",
 			"http://localhost/{document_txt}.txt",
 			"http://localhost/{document_html}.html",
@@ -25,35 +35,68 @@
 	},
 	{
 		"templates": [
-			"http://localhost{/path*}"
+			"/a/{any}",
+			"/a/{txt}.txt"
 		],
 		"uris": {
-			"http://localhost/": { "path": [] },
-			"http://localhost/a": { "path": [ "a" ] }
+			"/a/pg": { "any": "pg" },
+			"/a/pg.txt": { "txt": "pg" }
 		}
 	},
 	{
 		"templates": [
-			"http://localhost/",
-			"http://localhost{/path*}"
+			"/b/{txt}.txt",
+			"/b/{any}"
 		],
 		"uris": {
-			"http://localhost/": {},
-			"http://localhost/a": { "path": [ "a" ] }
+			"/b/pg": { "any": "pg" },
+			"/b/pg.txt": { "txt": "pg" }
+		}
+	},
+	{
+		"templates": [
+			"http://a.localhost{/path*}"
+		],
+		"uris": {
+			"http://a.localhost": {},
+			"http://a.localhost/": { "path": [ "" ] },
+			"http://a.localhost/a": { "path": [ "a" ] },
+			"http://a.localhost/a/b/c/d/e/f/g": { "path": [ "a", "b", "c", "d", "e", "f", "g" ] }
+		}
+	},
+	{
+		"templates": [
+			"http://b.localhost/",
+			"http://b.localhost{/path*}"
+		],
+		"uris": {
+			"http://b.localhost": {},
+			"http://b.localhost/": { "path": [""] },
+			"http://b.localhost/a": { "path": [ "a" ] }
+		}
+	},
+	{
+		"templates": [
+			"http://c.localhost{/path*}{?query*}"
+		],
+		"uris": {
+			"http://c.localhost": {},
+			"http://c.localhost/": { "path": [""] },
+			"http://c.localhost/a": { "path": [ "a" ] },
+			"http://c.localhost/a?x=y": { "path": [ "a" ], "query": ["x=y"] }
 		}
 	},
 	{
 		"templates": [
 			"http://example.com/",
 			"http://example.com/root{/base}{/a*}{?b*}{#c}",
-			"http://example.com/blog{/y,m,d,slug}",
-			"http://example.com{/path*}"
+			"http://example.com/blog{/y,m,d,slug}"
 		],
 		"uris": {
 			"http://example.com/": {},
-			"http://example.com/root": { "path": [] },
-			"http://example.com/root/a/b/c": { "base":"a", "a": [ "b", "c" ] },
-			"http://example.com/root/a/b/c?d&e": { "base":"a", "a": [ "b", "c" ], "b":[ "d", "e" ] }
+			"http://example.com/root": { },
+			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] },
+			"http://example.com/root/base/b/c?d&e": { "base":"base", "a": [ "b", "c" ], "b":[ "d", "e" ] }
 		}
 	}
 ]

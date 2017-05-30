@@ -97,8 +97,10 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
 					}
 					var varname = varspec.substring(0, varspec.length-1);
+					var explode = true;
 				}else{
 					var varname = varspec;
+					var explode = false;
 				}
 				if(varnames[varname]){
 					throw new Error('Variable '+JSON.stringify(vn)+' is already used');
@@ -109,13 +111,12 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					exprinfo.exp_label = varname+' prefix';
 					exprinfo.exp_range = {};
 					exprinfo.exp_range[prefix] = null;
-					exprinfo.exp_match = new Node;
+					var e2 = exprinfo.exp_match = new Node;
 					exprinfo.exp_end = end;
-					var e2 = exprinfo.exp_match;
 				}else{
 					var e2 = exprinfo;
 				}
-				e2.exp_info = {name: varname};
+				e2.exp_info = {name:varname, explode:explode};
 				e2.exp_label = varname+' body';
 				e2.chr = end.chr;
 				//e2.exp_range = RANGES_MAP[range];
@@ -191,11 +192,11 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var parse_chr = new StateSet(offset+1, 2, []);
 		var parse_exp = new StateSet(offset+1, 1, []);
 		var chr = uri[offset];
-		console.log('Parse('+offset+') '+chr);
+//		console.log('Parse('+offset+') '+chr);
 		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
 			var alt = stateset_this.alts[alt_i];
 			var node = alt.branch;
-			console.log(node);
+//			console.log(node);
 			if(node.end){
 				return finish(node.end, alt.history.push(offset, 'end'));
 			}
@@ -208,7 +209,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				var validRange = typeof node.exp_range==='string' ? RANGES_MAP[node.exp_range] : node.exp_range ;
 				if(chr in validRange){
 //					console.log('exp_match');
-					if(node.exp_match) parse_exp.alts.push(new State(node.exp_match, alt.history.push(offset, node.exp_info)));
+					if(node.exp_match) parse_exp.alts.push(new State(node.exp_match, alt.history.push(offset, node.exp_match.exp_info)));
 				}else if(node.exp_end){
 //					console.log('exp_end');
 					// Exit expression and evaluate end-of-expression condition
@@ -220,6 +221,10 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 						if(chr in validRange){
 							parse_exp.alts.push(
 								new State(exp.exp_match, alt.history.push(offset, exp.exp_match.exp_info))
+							);
+						}else{
+							parse_exp.alts.push(
+								new State(exp.exp_end, alt.history.push(offset, exp.exp_end.exp_info))
 							);
 						}
 					});
@@ -247,7 +252,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(parse_chr.alts.length){
 			parse_backtrack.push(parse_chr);
 		}
-		console.log(offset, parse_backtrack);
+//		console.log(offset, parse_backtrack);
 	}
 	// If there's no match
 	if(!parse_backtrack.length) return null;
@@ -267,6 +272,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		for(var item=solution.history; item.prev; item=item.prev){
 			history.unshift({offset:item.offset, data:item.data, chr:uri[item.offset]});
 		}
+//		console.log(history);
 		var var_list = [];
 		var current_var = {};
 		for(var item_i=0; item_i<history.length; item_i++){
@@ -277,7 +283,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 					current_var = {};
 				}
 				if(item.data.name && current_var.start===undefined){
-					current_var = { start:item.offset, end:undefined, name:item.data.name };
+					current_var = { start:item.offset, end:undefined, name:item.data.name, array:item.data.explode };
 					var_list.push(current_var);
 				}
 			}
@@ -285,7 +291,13 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var bindings = {};
 		var_list.forEach(function(v){
 			var varname = v.name;
-			bindings[varname] = uri.substring(v.start, v.end);
+			var value = uri.substring(v.start, v.end);
+			if(v.array){
+				bindings[varname] = bindings[varname] || [];
+				bindings[varname].push(value);
+			}else{
+				bindings[varname] = value;
+			}
 		});
 		return new Result(route.template, route.arg, bindings);
 	}
