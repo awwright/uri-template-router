@@ -64,3 +64,29 @@ Variables are alphanumeric, and optionally end with a variable modifier:
 
 * The explode modifier `*` indicates the variable will be an array
 * The prefix modifier `:n` (for some positive integer `n`) indicates the variable is a string that has a maximum length.
+
+## Evaluation order
+
+URI Template Router returns a single, best matching URI.
+
+### Characters are preferred over expressions
+
+The matching processor will only return a single, best match. If there's multiple matching templates, the processor evaluates the URI left to right, preferring to match character literals over expressions, and then in the order the templates were defined.
+
+For example, given the URI <`.../foo.html`>, the following templates would be preferred in the given order:
+
+0. <`.../foo.html`>
+0. <`.../foo.{ext}`>
+0. <`.../{base}.html`>
+0. <`.../{file}`>
+
+Routes are hierarchical.
+
+
+### ToDo
+
+* Configurable maximum URI length
+* Blacklisted/rewrite patterns (ignore "../" segments)
+* Cast variables to numbers
+* Access to raw URI data
+* Dump error on invalid URI
