@@ -1,6 +1,12 @@
 
 module.exports.Router = Router;
 
+function log(){
+//	console.log.apply(console, arguments);
+}
+function dir(){
+//	console.dir.apply(console, arguments);
+}
 
 function Router(){
 	this.routes = [];
@@ -184,39 +190,40 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		new StateSet(0, 0, [new State(this.tree, new Match)]),
 	];
 	for(var offset=0; offset<=uri.length; offset++){
-//		console.log('Offset=%d Stack=%d', offset, parse_backtrack.length);
+//		log('Offset=%d Stack=%d', offset, parse_backtrack.length);
 		var stateset_this = parse_backtrack.pop();
-		//console.log(stateset_this);
+		//log(stateset_this);
 		if(!stateset_this) break;
 		offset = stateset_this.offset;
 		var parse_chr = new StateSet(offset+1, 2, []);
 		var parse_exp = new StateSet(offset+1, 1, []);
 		var chr = uri[offset];
-//		console.log('Parse('+offset+') '+chr);
+		log('Parse('+offset+') '+chr);
 		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
 			var alt = stateset_this.alts[alt_i];
 			var node = alt.branch;
-//			console.log(node);
+//			log(node);
 			if(node.end){
 				return finish(node.end, alt.history.push(offset, 'end'));
 			}
 			if(node.chr[chr]){
-//				console.log('chr');
+				log('chr');
 				parse_chr.alts.push(new State(node.chr[chr], alt.history.push(offset, 'chr')));
 			}
 			if(node.exp_range){
 				// If we're currently in an expression
 				var validRange = typeof node.exp_range==='string' ? RANGES_MAP[node.exp_range] : node.exp_range ;
 				if(chr in validRange){
-//					console.log('exp_match');
+					log('exp_match');
 					if(node.exp_match) parse_exp.alts.push(new State(node.exp_match, alt.history.push(offset, node.exp_match.exp_info)));
 				}else if(node.exp_end){
-//					console.log('exp_end');
+					log('exp_end');
 					// Exit expression and evaluate end-of-expression condition
 					if(node.exp_end.chr[chr]){
 						parse_chr.alts.push(new State(node.exp_end.chr[chr], alt.history.push(offset, 'chr')));
 					}
 					node.exp_end.exp.forEach(function(exp){
+						log('exp_end exp');
 						var validRange = typeof exp.exp_range==='string' ? RANGES_MAP[exp.exp_range] : exp.exp_range ;
 						if(chr in validRange){
 							parse_exp.alts.push(
@@ -229,10 +236,10 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 						}
 					});
 				}else{
-//					console.log('no exp_end');
+					log('no exp_end');
 				}
 			}else{
-//				console.log('exp_start');
+				log('exp_start');
 				// If no expression
 				node.exp.forEach(function(exp){
 					// Test that potential expression matches current character
@@ -252,7 +259,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(parse_chr.alts.length){
 			parse_backtrack.push(parse_chr);
 		}
-//		console.log(offset, parse_backtrack);
+//		log(offset, parse_backtrack);
 	}
 	// If there's no match
 	if(!parse_backtrack.length) return null;
@@ -272,7 +279,8 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		for(var item=solution.history; item.prev; item=item.prev){
 			history.unshift({offset:item.offset, data:item.data, chr:uri[item.offset]});
 		}
-//		console.log(history);
+		log('history');
+		log(history);
 		var var_list = [];
 		var current_var = {};
 		for(var item_i=0; item_i<history.length; item_i++){
