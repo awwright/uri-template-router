@@ -44,9 +44,8 @@ var RANGES = {
 	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
 	RESERVED_UNRESERVED: ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~'],
 };
-var RANGES_MAP = {};
-Object.keys(RANGES).forEach(function(name){
-	var validMap = RANGES_MAP[name] = {};
+function getRangeMap(range){
+	var validMap = {};
 	RANGES[name].forEach(function(chr){
 		if(chr.length==1){
 			validMap[chr] = null;
@@ -56,7 +55,10 @@ Object.keys(RANGES).forEach(function(name){
 			}
 		}
 	});
-});
+	return validMap;
+}
+var RANGES_MAP = {};
+Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
 
 function Modifier(prefix, prefixNext, range){
 	this.prefix = prefix;
@@ -95,27 +97,39 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 			var prefix = modifier.prefix;
 			var prefixNext = modifier.prefixNext;
 			var range = modifier.range;
-			var variableList = patternBody.substring(modifierChar.length).split(/,/g);
-			var variableInfo = {};
-			variableList.forEach(function(varspec){
-				if(varspec.match(/\*$/)){
-					if(!prefixNext){
-						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
+			var variableList = patternBody
+				.substring(modifierChar.length)
+				.split(/,/g)
+				.map(function(varspec, index){
+					if(varspec.match(/\*$/)){
+						if(!prefixNext){
+							throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
+						}
+						var varname = varspec.substring(0, varspec.length-1);
+						var explode = true;
+					}else{
+						var varname = varspec;
+						var explode = false;
 					}
-					var varname = varspec.substring(0, varspec.length-1);
-					var explode = true;
-				}else{
-					var varname = varspec;
-					var explode = false;
-				}
+					return {
+						varname: varname,
+						explode: explode,
+					};
+				});
+			var variableInfo = {};
+			variableList.forEach(function(varspec, index){
+				var varname = varspec.varname;
+				var explode = varspec.explode;
 				if(varnames[varname]){
-					throw new Error('Variable '+JSON.stringify(vn)+' is already used');
+					throw new Error('Variable '+JSON.stringify(varname)+' is already used');
 				}
+				varnames[varname] = varspec;
 				var exprinfo = new Node;
 				var end = new Node;
 				if(prefix){
 					exprinfo.exp_label = varname+' prefix';
 					exprinfo.exp_range = {};
+					exprinfo.exp_info = {prefix:varname, explode:explode};
 					exprinfo.exp_range[prefix] = null;
 					var e2 = exprinfo.exp_match = new Node;
 					exprinfo.exp_end = end;
@@ -128,7 +142,11 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				//e2.exp_range = RANGES_MAP[range];
 				e2.exp_range = range;
 				e2.exp_match = e2;
-				e2.exp_end = end;
+				if(explode){
+					e2.exp_end = exprinfo
+				}else{
+					e2.exp_end = end;
+				}
 				node.exp.push(exprinfo);
 				node = end;
 			});
@@ -289,6 +307,10 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				if(current_var.end===undefined){
 					current_var.end = item.offset;
 					current_var = {};
+				}
+				if(item.data.prefix && current_var.start===undefined){
+					current_var = { start:item.offset+1, end:undefined, name:item.data.name, array:item.data.explode };
+					var_list.push(current_var);
 				}
 				if(item.data.name && current_var.start===undefined){
 					current_var = { start:item.offset, end:undefined, name:item.data.name, array:item.data.explode };
