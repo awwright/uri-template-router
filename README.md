@@ -67,11 +67,11 @@ Variables are alphanumeric, and optionally end with a variable modifier:
 
 ## Evaluation order
 
-URI Template Router returns a single, best matching URI.
+URI Template Router returns a single, best matching template and the values that the expressions matched.
 
 ### Characters are preferred over expressions
 
-The matching processor will only return a single, best match. If there's multiple matching templates, the processor evaluates the URI left to right, preferring to match character literals over expressions, and then in the order the templates were defined.
+The matching processor will only return a single, best match. If there's multiple matching templates, the processor evaluates the URI left to right, preferring templates that match character literals over expressions, and then in the order the templates were defined.
 
 For example, given the URI <`.../foo.html`>, the following templates would be preferred in the given order:
 

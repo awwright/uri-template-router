@@ -1,5 +1,5 @@
 
-var file = './route-range4.js';
+var file = './route.js';
 console.log(file);
 var Router = require(file).Router;
 var r = new Router;
