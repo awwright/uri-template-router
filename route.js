@@ -46,7 +46,7 @@ var RANGES = {
 };
 function getRangeMap(range){
 	var validMap = {};
-	RANGES[name].forEach(function(chr){
+	range.forEach(function(chr){
 		if(chr.length==1){
 			validMap[chr] = null;
 		}else if(chr.length==2){
@@ -97,6 +97,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 			var prefix = modifier.prefix;
 			var prefixNext = modifier.prefixNext;
 			var range = modifier.range;
+			var repeats = 0;
 			var variableList = patternBody
 				.substring(modifierChar.length)
 				.split(/,/g)
@@ -120,36 +121,38 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 			variableList.forEach(function(varspec, index){
 				var varname = varspec.varname;
 				var explode = varspec.explode;
+				repeats++;
+				if(explode) explode = Math.POSITIVE_INFINITY;
 				if(varnames[varname]){
 					throw new Error('Variable '+JSON.stringify(varname)+' is already used');
 				}
 				varnames[varname] = varspec;
-				var exprinfo = new Node;
-				var end = new Node;
-				if(prefix){
-					exprinfo.exp_label = varname+' prefix';
-					exprinfo.exp_range = {};
-					exprinfo.exp_info = {prefix:varname, explode:explode};
-					exprinfo.exp_range[prefix] = null;
-					var e2 = exprinfo.exp_match = new Node;
-					exprinfo.exp_end = end;
-				}else{
-					var e2 = exprinfo;
-				}
-				e2.exp_info = {name:varname, explode:explode};
-				e2.exp_label = varname+' body';
-				e2.chr = end.chr;
-				//e2.exp_range = RANGES_MAP[range];
-				e2.exp_range = range;
-				e2.exp_match = e2;
-				if(explode){
-					e2.exp_end = exprinfo
-				}else{
-					e2.exp_end = end;
-				}
-				node.exp.push(exprinfo);
-				node = end;
 			});
+			var exprinfo = new Node;
+			var end = new Node;
+			if(prefix){
+				exprinfo.exp_label = patternBody+' prefix';
+				exprinfo.exp_range = {};
+				exprinfo.exp_info = {prefix:prefix};
+				exprinfo.exp_range[prefix] = null;
+				var e2 = exprinfo.exp_match = new Node;
+				exprinfo.exp_end = end;
+			}else{
+				var e2 = exprinfo;
+			}
+			e2.exp_info = {name:patternBody};
+			e2.exp_label = patternBody+' body';
+			e2.chr = end.chr;
+			//e2.exp_range = RANGES_MAP[range];
+			e2.exp_range = range;
+			e2.exp_match = e2;
+			if(repeats>=Math.POSITIVE_INFINITY){
+				e2.exp_end = exprinfo
+			}else{
+				e2.exp_end = end;
+			}
+			node.exp.push(exprinfo);
+			node = end;
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
 			// if chr is undefined, this will set the key "undefined"
@@ -170,19 +173,31 @@ function StateSet(offset, tier, alternatives){
 	this.alts = alternatives;
 }
 
-function State(n, s){
-	if(!(s instanceof Match)) throw new Error('Missing required argument history');
-	this.branch = n;
-	this.history = s;
-}
+var S = {
+	EOF: 10,
+	LIT: 20,
+	LITPCT0: 21,
+	LITPCT1: 22,
+	LITPCT3: 23,
+	PFX: 30,
+	EXP: 40,
+	EXPPCT0: 41,
+	EXPPCT0: 42,
+	EXPPCT0: 43,
+};
+// Enable for testing
+for(var n in S) S[n]=n;
 
-function Match(prev, offset, data){
+function State(prev, offset, branch, state, data){
 	this.prev = prev;
 	this.offset = offset;
+	this.branch = branch;
+	this.state = state;
 	this.data = data;
 }
-Match.prototype.push = function push(offset, data){
-	return new Match(this, offset, data);
+State.prototype.push = function push(offset, branch, state, data){
+	log('Decend', offset, data);
+	return new State(this, offset, branch, state, data);
 }
 
 function withChange(bindings, name, value){
@@ -205,7 +220,7 @@ function withChange(bindings, name, value){
 
 Router.prototype.resolveURI = function resolve(uri, flags){
 	var parse_backtrack = [
-		new StateSet(0, 0, [new State(this.tree, new Match)]),
+		new StateSet(0, 0, [new State(null, 0, this.tree)]),
 	];
 	for(var offset=0; offset<=uri.length; offset++){
 //		log('Offset=%d Stack=%d', offset, parse_backtrack.length);
@@ -219,37 +234,38 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		log('Parse('+offset+') '+chr);
 		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
 			var alt = stateset_this.alts[alt_i];
+			log('Alt', alt)
 			var node = alt.branch;
 //			log(node);
 			if(node.end){
-				return finish(node.end, alt.history.push(offset, 'end'));
+				return finish(node.end, alt.push(offset, node.end, S.EOF, 'end'));
 			}
 			if(node.chr[chr]){
 				log('chr');
-				parse_chr.alts.push(new State(node.chr[chr], alt.history.push(offset, 'chr')));
+				parse_chr.alts.push(alt.push(offset, node.chr[chr], S.LIT, 'chr'));
 			}
 			if(node.exp_range){
 				// If we're currently in an expression
 				var validRange = typeof node.exp_range==='string' ? RANGES_MAP[node.exp_range] : node.exp_range ;
 				if(chr in validRange){
 					log('exp_match');
-					if(node.exp_match) parse_exp.alts.push(new State(node.exp_match, alt.history.push(offset, node.exp_match.exp_info)));
+					if(node.exp_match) parse_exp.alts.push(alt.push(offset, node.exp_match, S.EXP, node.exp_match.exp_info));
 				}else if(node.exp_end){
 					log('exp_end');
 					// Exit expression and evaluate end-of-expression condition
 					if(node.exp_end.chr[chr]){
-						parse_chr.alts.push(new State(node.exp_end.chr[chr], alt.history.push(offset, 'chr')));
+						parse_chr.alts.push(alt.push(offset, node.exp_end.chr[chr], S.LIT, 'chr'));
 					}
 					node.exp_end.exp.forEach(function(exp){
 						log('exp_end exp');
 						var validRange = typeof exp.exp_range==='string' ? RANGES_MAP[exp.exp_range] : exp.exp_range ;
 						if(chr in validRange){
 							parse_exp.alts.push(
-								new State(exp.exp_match, alt.history.push(offset, exp.exp_match.exp_info))
+								alt.push(offset, exp.exp_match, S.EXP, exp.exp_match.exp_info)
 							);
 						}else{
 							parse_exp.alts.push(
-								new State(exp.exp_end, alt.history.push(offset, exp.exp_end.exp_info))
+								alt.push(offset, exp.exp_end, E.LIT, exp.exp_end.exp_info)
 							);
 						}
 					});
@@ -264,7 +280,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 					var validRange = typeof exp.exp_range==='string' ? RANGES_MAP[exp.exp_range] : exp.exp_range ;
 					if(chr in validRange){
 						parse_exp.alts.push(
-							new State(exp.exp_match, alt.history.push(offset, exp.exp_match.exp_info))
+							alt.push(offset, exp.exp_match, S.EXP, exp.exp_match.exp_info)
 						);
 					}
 				});
@@ -290,12 +306,12 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 	if(solution_list.length>1){
 		//throw new Error('Solution with more than one result');
 	}
-	return finish(solution.branch.end, solution.history);
+	return finish(solution.branch.end, solution);
 
 	function finish(route, match){
 		var history = [];
-		for(var item=solution.history; item.prev; item=item.prev){
-			history.unshift({offset:item.offset, data:item.data, chr:uri[item.offset]});
+		for(var item=solution; item.prev; item=item.prev){
+			history.unshift({offset:item.offset, state:item.state, data:item.data, chr:uri[item.offset]});
 		}
 		log('history');
 		log(history);
