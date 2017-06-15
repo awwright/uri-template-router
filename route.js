@@ -132,7 +132,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				if(varspec.prefix){
 					node.exp_chr[varspec.prefix] = node.exp_chr[varspec.prefix] || new Node;
 					node = node.exp_chr[varspec.prefix];
-					node.exp_chr_info = {type:'PFX', push:varspec.index};
+					node.exp_chr_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
 				var beginning = node;
 				node.exp_set = node.exp_set || {};
@@ -288,7 +288,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				if(Array.isArray(varv)){
 					varv[varv.length-1] = varv[varv.length-1] + item.chr;
 				}else{
-					var_list[item.var_index] = (vvar||'') + item.chr;
+					var_list[item.var_index] = (varv||'') + item.chr;
 				}
 			}
 		}
