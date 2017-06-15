@@ -181,7 +181,6 @@ function State(prev, offset, branch, mode, data){
 	this.data = data;
 }
 State.prototype.push = function push(offset, branch, mode, data){
-	log('Decend', offset, data);
 	return new State(this, offset, branch, mode, data);
 }
 
@@ -210,27 +209,30 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		var mode = state.mode;
-		log('branch', chr, offset, branch);
+		log(' branch', mode, branch);
 		if(branch.chr[chr]){
-			log('chr', chr);
+			log(' chr', chr);
 			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
 		}
 		if(branch.exp_chr[chr]){
-			log('prefix', chr);
+			log(' prefix', chr);
 			parse_chr.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, 'exp_chr'));
 		}
 		if(branch.exp_range){
-			parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
-			return;
+			var validRange = RANGES_MAP[branch.exp_range];
+			if(chr in validRange){
+				log(' exp_range', chr);
+				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
+				return;
+			}
 		}
 		for(var rangeName in branch.exp_set){
-			log('exp_match', rangeName);
+			log(' exp_set', rangeName);
 			var validRange = RANGES_MAP[rangeName];
 			var exprInfo = branch.exp_set[rangeName];
 			if(chr in validRange){
 				parse_exp.alts.push(state.push(offset, exprInfo, S.CHR, exprInfo.exp_info));
 			}else{
-				log('exp_end');
 				// If this expression does not match the current character, advance to the next input pattern that might
 				consumeInputCharacter(offset, chr, state, exprInfo.end);
 			}
@@ -259,12 +261,13 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 //		log(offset, parse_backtrack);
 	}
 
-	var solutions = parse_chr.alts.filter(function(v){ return v.branch && v.branch.end; });
-	return solutions.map(function(v){
-		return v.branch.end;
-	})[0];
+	var solutions = parse_chr.alts
+		.filter(function(v){ return v.branch && v.branch.end; })
+		.map(function(v){ return finish(v); });
+	return solutions[0];
 
-	function finish(route, match){
+	function finish(solution){
+		var route = solution.branch.end;
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
 			history.unshift({chr:uri[item.offset], offset:item.offset, var_index:item.data.index});
