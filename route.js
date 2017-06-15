@@ -22,9 +22,10 @@ function Node(){
 	// Expressions to decend into
 	this.exp_match = [];
 	// If we're currently in an expression
-	this.exp_info = null;
 	this.exp_chr = {};
+	this.exp_chr_info = null;
 	this.exp_range = null;
+	this.exp_range_info = null;
 	this.exp_set = null;
 }
 
@@ -120,26 +121,29 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				};
 			})
 			.forEach(function(varspec, index){
-				var varname = varspec.varname;
-				var explode = varspec.explode;
-				if(varnames[varname]){
-					throw new Error('Variable '+JSON.stringify(varname)+' is already used');
+				if(varnames[varspec.varname]){
+					throw new Error('Variable '+JSON.stringify(varspec.varname)+' is already used');
 				}
 				var expressionInfo = {};
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
 				variables[varspec.index] = varspec;
 
-				var end = new Node;
-				if(prefix){
-					node.exp_chr[prefix] = node.exp_chr[prefix] || new Node;
-					node = node.exp_chr[prefix];
+				if(varspec.prefix){
+					node.exp_chr[varspec.prefix] = node.exp_chr[varspec.prefix] || new Node;
+					node = node.exp_chr[varspec.prefix];
+					node.exp_chr_info = {type:'PFX', push:varspec.index};
 				}
+				var beginning = node;
 				node.exp_set = node.exp_set || {};
 				node.exp_set[range] = node.exp_set[range] || new Node;
 				node = node.exp_set[range];
-				node.exp_info = {type:'EXP', index:varspec.index};
 				node.exp_range = range;
+				node.exp_range_info = {type:'EXP', index:varspec.index};
+				if(varspec.explode){
+					if(node.exp_chr[varspec.prefix]) throw new error('Identical consecutive expressions');
+					node.exp_chr[varspec.prefix] = beginning;
+				}
 			});
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
@@ -163,10 +167,10 @@ function StateSet(offset, tier, alternatives){
 }
 
 var S = {
-	EOF: 10,
-	CHR: 20,
-	PCT1: 31,
-	PCT2: 32,
+	EOF: 10, // Expending end of input
+	CHR: 20, // Expecting a character, or "%" to begin a pct-encoded sequence
+	PCT1: 31, // Expecting first hex char of a pct-encoded sequence
+	PCT2: 32, // Expecting the second hex char of a pct-encoded sequence
 };
 // Enable for testing
 for(var n in S) S[n]=n;
@@ -216,13 +220,13 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		}
 		if(branch.exp_chr[chr]){
 			log(' prefix', chr);
-			parse_chr.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, 'exp_chr'));
+			parse_chr.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_chr_info));
 		}
 		if(branch.exp_range){
 			var validRange = RANGES_MAP[branch.exp_range];
 			if(chr in validRange){
-				log(' exp_range', chr);
-				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
+				log(' exp_range', branch.exp_range);
+				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_range_info));
 				return;
 			}
 		}
@@ -231,7 +235,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			var validRange = RANGES_MAP[rangeName];
 			var exprInfo = branch.exp_set[rangeName];
 			if(chr in validRange){
-				parse_exp.alts.push(state.push(offset, exprInfo, S.CHR, exprInfo.exp_info));
+				parse_exp.alts.push(state.push(offset, exprInfo, S.CHR, exprInfo.exp_range_info));
 			}else{
 				// If this expression does not match the current character, advance to the next input pattern that might
 				consumeInputCharacter(offset, chr, state, exprInfo.end);
@@ -270,15 +274,22 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var route = solution.branch.end;
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			history.unshift({chr:uri[item.offset], offset:item.offset, var_index:item.data.index});
+			history.unshift({chr:uri[item.offset], offset:item.offset, var_index:item.data.index, var_push:item.data.push});
 		}
 		log('history', history);
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
-			if(item.var_index!==undefined){
-				var vvar = var_list[item.var_index] || '';
-				var_list[item.var_index] = vvar + item.chr;
+			if(item.var_push!==undefined){
+				var_list[item.var_push] = var_list[item.var_push] || [];
+				var_list[item.var_push].push('');
+			}else if(item.var_index!==undefined){
+				var varv = var_list[item.var_index];
+				if(Array.isArray(varv)){
+					varv[varv.length-1] = varv[varv.length-1] + item.chr;
+				}else{
+					var_list[item.var_index] = (vvar||'') + item.chr;
+				}
 			}
 		}
 		log('var_list', var_list);
