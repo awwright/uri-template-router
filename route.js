@@ -211,9 +211,6 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		var mode = state.mode;
 		log('branch', chr, offset, branch);
-		if(branch.end){
-			return finish(state.end, state.push(offset, branch.end, S.EOF, 'end'));
-		}
 		if(branch.chr[chr]){
 			log('chr', chr);
 			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
@@ -224,6 +221,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		}
 		if(branch.exp_range){
 			parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
+			return;
 		}
 		for(var rangeName in branch.exp_set){
 			log('exp_match', rangeName);
@@ -233,12 +231,12 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				parse_exp.alts.push(state.push(offset, exprInfo, S.CHR, exprInfo.exp_info));
 			}else{
 				log('exp_end');
+				// If this expression does not match the current character, advance to the next input pattern that might
 				consumeInputCharacter(offset, chr, state, exprInfo.end);
 			}
 		}
 	}
 	for(var offset=0; offset<=uri.length; offset++){
-//		log('Offset=%d Stack=%d', offset, parse_backtrack.length);
 		var stateset_this = parse_backtrack.pop();
 		//log(stateset_this);
 		if(!stateset_this) break;
@@ -246,6 +244,8 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var parse_chr = new StateSet(offset+1, 3, []);
 		var parse_pfx = new StateSet(offset+1, 2, []);
 		var parse_exp = new StateSet(offset+1, 1, []);
+		// This will set chr===undefined for the EOF position
+		// We could also use another value like "\0" or similar to represent EOF
 		var chr = uri[offset];
 		log('Parse('+offset+') '+chr);
 		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
@@ -258,18 +258,11 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(parse_chr.alts.length) parse_backtrack.push(parse_chr);
 //		log(offset, parse_backtrack);
 	}
-	// If there's no match
-	if(!parse_backtrack.length) return null;
-	var stateset_this = parse_backtrack.pop();
-	var solution_list = stateset_this.alts.filter(function(v){
-		return !!v.branch.end;
-	});
-	var solution = solution_list[0];
-	if(solution_list.length<1) return null;
-	if(solution_list.length>1){
-		//throw new Error('Solution with more than one result');
-	}
-	return finish(solution.branch.end, solution);
+
+	var solutions = parse_chr.alts.filter(function(v){ return v.branch && v.branch.end; });
+	return solutions.map(function(v){
+		return v.branch.end;
+	})[0];
 
 	function finish(route, match){
 		var history = [];
@@ -278,7 +271,6 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		}
 		log('history', history);
 		var var_list = [];
-		var current_var = {};
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
 			if(item.var_index!==undefined){

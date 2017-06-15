@@ -25,12 +25,17 @@ tests.forEach(function(testPage){
 	//console.log(JSON.stringify(router,null," "));
 	Object.keys(testPage.uris).forEach(function(uri){
 		//console.log('Test: '+uri);
-		var route = router.resolveURI(uri);
+		try {
+			var route = router.resolveURI(uri);
+		}catch(e){
+			console.log('error', uri, expected, route);
+			return;
+		}
 		//console.log(route);
 		//route=route[0];
 		var expected = testPage.uris[uri];
 		if(expected && !route){
-			console.log('Fail:', uri, expected, route);
+			console.log('Fail:', '\t', uri, expected, route);
 		}else if(!route || !compareJSONParsedObject(route.data, expected)){
 			console.log('Fail:', route.template, uri, expected, route.data);
 		}else{
