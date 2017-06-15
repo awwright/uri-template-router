@@ -23,12 +23,14 @@ function Node(){
 	this.exp_match = [];
 	// If we're currently in an expression
 	this.exp_info = null;
-	this.exp_range = null;
 	this.exp_chr = {};
+	this.exp_range = null;
+	this.exp_set = null;
 }
 
-function Route(template, arg){
+function Route(template, variables, arg){
 	this.template = template;
+	this.variables = variables;
 	this.argument = arg;
 }
 
@@ -78,6 +80,7 @@ Router.modifiers = {
 Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 	var node = this.tree;
 	var varnames = {};
+	var variables = [];
 	for(var uri_i=0; uri_i<=uri.length; uri_i++){
 		var chr = uri[uri_i];
 		if(chr=='{'){
@@ -125,16 +128,18 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				var expressionInfo = {};
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
+				variables[varspec.index] = varspec;
 
 				var end = new Node;
 				if(prefix){
 					node.exp_chr[prefix] = node.exp_chr[prefix] || new Node;
 					node = node.exp_chr[prefix];
 				}
+				node.exp_set = node.exp_set || {};
+				node.exp_set[range] = node.exp_set[range] || new Node;
+				node = node.exp_set[range];
 				node.exp_info = {type:'EXP', index:varspec.index};
-				node.exp_range = node.exp_range || {};
-				node.exp_range[range] = node.exp_range[range] || new Node;
-				node = node.exp_range[range];
+				node.exp_range = range;
 			});
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
@@ -147,7 +152,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 	if(node.end){
 		throw new Error('Route already defined');
 	}
-	node.end = new Route(uri, arg);
+	node.end = new Route(uri, variables, arg);
 }
 
 function StateSet(offset, tier, alternatives){
@@ -217,12 +222,15 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			log('prefix', chr);
 			parse_chr.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, 'exp_chr'));
 		}
-		for(var rangeName in branch.exp_range){
+		if(branch.exp_range){
+			parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
+		}
+		for(var rangeName in branch.exp_set){
 			log('exp_match', rangeName);
 			var validRange = RANGES_MAP[rangeName];
-			var exprInfo = branch.exp_range[rangeName];
+			var exprInfo = branch.exp_set[rangeName];
 			if(chr in validRange){
-				parse_exp.alts.push(state.push(offset, exprInfo, S.CHR, branch.exp_info));
+				parse_exp.alts.push(state.push(offset, exprInfo, S.CHR, exprInfo.exp_info));
 			}else{
 				log('exp_end');
 				consumeInputCharacter(offset, chr, state, exprInfo.end);
@@ -244,17 +252,10 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			var alt = stateset_this.alts[alt_i];
 			consumeInputCharacter(offset, chr, alt, alt.branch);
 		}
-		// Push expressions onto the stack, below (before) matched characters however
-		if(parse_exp.alts.length){
-			parse_backtrack.push(parse_exp);
-		}
-		if(parse_pfx.alts.length){
-			parse_backtrack.push(parse_pfx);
-		}
-		// Push highest priority stuff to top of stack (i.e. last)
-		if(parse_chr.alts.length){
-			parse_backtrack.push(parse_chr);
-		}
+		// Push expressions onto the stack, top (highest priority) of stack is last
+		if(parse_exp.alts.length) parse_backtrack.push(parse_exp);
+		if(parse_pfx.alts.length) parse_backtrack.push(parse_pfx);
+		if(parse_chr.alts.length) parse_backtrack.push(parse_chr);
 //		log(offset, parse_backtrack);
 	}
 	// If there's no match
@@ -262,7 +263,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 	var stateset_this = parse_backtrack.pop();
 	var solution_list = stateset_this.alts.filter(function(v){
 		return !!v.branch.end;
-	})
+	});
 	var solution = solution_list[0];
 	if(solution_list.length<1) return null;
 	if(solution_list.length>1){
@@ -273,39 +274,22 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 	function finish(route, match){
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			history.unshift({offset:item.offset, mode:item.mode, data:item.data, chr:uri[item.offset]});
+			history.unshift({chr:uri[item.offset], offset:item.offset, var_index:item.data.index});
 		}
-		log('history');
-		log(history);
+		log('history', history);
 		var var_list = [];
 		var current_var = {};
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
-			if(current_var.name!==item.data.name){
-				if(current_var.end===undefined){
-					current_var.end = item.offset;
-					current_var = {};
-				}
-				if(item.data.prefix && current_var.start===undefined){
-					current_var = { start:item.offset+1, end:undefined, name:item.data.name, array:item.data.explode };
-					var_list.push(current_var);
-				}
-				if(item.data.name && current_var.start===undefined){
-					current_var = { start:item.offset, end:undefined, name:item.data.name, array:item.data.explode };
-					var_list.push(current_var);
-				}
+			if(item.var_index!==undefined){
+				var vvar = var_list[item.var_index] || '';
+				var_list[item.var_index] = vvar + item.chr;
 			}
 		}
+		log('var_list', var_list);
 		var bindings = {};
-		var_list.forEach(function(v){
-			var varname = v.name;
-			var value = uri.substring(v.start, v.end);
-			if(v.array){
-				bindings[varname] = bindings[varname] || [];
-				bindings[varname].push(value);
-			}else{
-				bindings[varname] = value;
-			}
+		route.variables.forEach(function(v){
+			bindings[v.varname] = var_list[v.index];
 		});
 		return new Result(route.template, route.arg, bindings);
 	}
