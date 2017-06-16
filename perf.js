@@ -24,10 +24,10 @@ function compareJSONParsedObject(a, b){
 }
 
 var testRouters = {
-	range: require('./route-range.js').Router,
+//	range: require('./route-range.js').Router,
 //	range2: require('./route-range2.js').Router,
 //	range3: require('./route-range3.js').Router,
-	range4: require('./route-range4.js').Router,
+//	range4: require('./route-range4.js').Router,
 	control: require('./route.js').Router,
 };
 padlen = Math.max.apply(null, Object.keys(testRouters).map(function(v){ return v.length; }));
