@@ -71,7 +71,12 @@ URI Template Router returns a single, best matching template and the values that
 
 ### Characters are preferred over expressions
 
-The matching processor will only return a single, best match. If there's multiple matching templates, the processor evaluates the URI left to right, preferring templates that match character literals over expressions, and then in the order the templates were defined.
+The matching processor will only return a single, best match. If there's multiple matching templates, the processor evaluates the URI left to right, preferring to match templates in the following order:
+
+0. Matching a literal character
+0. Matching an expression prefix
+0. Matching an expression body
+0. Matching a repeat of an expression (marked with the explode modifier)
 
 For example, given the URI <`.../foo.html`>, the following templates would be preferred in the given order:
 

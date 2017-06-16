@@ -2,10 +2,10 @@
 module.exports.Router = Router;
 
 function log(){
-	console.log.apply(console, arguments);
+	if(process.argv.indexOf('-v')>=0) console.log.apply(console, arguments);
 }
 function dir(){
-	console.dir.apply(console, arguments);
+	if(process.argv.indexOf('-v')>=0) console.dir.apply(console, arguments);
 }
 
 function Router(){
@@ -25,6 +25,8 @@ function Node(nid){
 	// The characters we can reach next
 	// If in an expression, this is potentially the end of the expression
 	this.chr = {};
+	// Decend into this for more alternatives
+	this.next = null;
 	// Expressions to decend into
 	this.exp_match = [];
 	// If we're currently in an expression
@@ -33,7 +35,6 @@ function Node(nid){
 	this.exp_range = null;
 	this.exp_range_info = null;
 	this.exp_set = null;
-	this.exp_next = null;
 	this.exp_repeat = null;
 }
 
@@ -107,7 +108,6 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 			}
 			var prefix = modifier.prefix;
 			var prefixNext = modifier.prefixNext;
-			var range = modifier.range;
 			patternBody
 			.substring(modifierChar.length)
 			.split(/,/g)
@@ -127,6 +127,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					prefix: index ? prefixNext : prefix,
 					range: modifier.range,
 					explode: explode,
+					optional: true,
 				};
 			})
 			.forEach(function(varspec, index){
@@ -137,7 +138,11 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
 				variables[varspec.index] = varspec;
+				var range = varspec.range + (varspec.explode?'*':'')
 
+				// Using this enforces an order for expressions
+				node.next = node.next || new Node(nid());
+				node = node.next;
 				var beginning = node;
 				if(varspec.prefix){
 					node.exp_chr[varspec.prefix] = node.exp_chr[varspec.prefix] || new Node(nid());
@@ -145,17 +150,18 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					node.exp_chr_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
 				node.exp_set = node.exp_set || {};
-				node.exp_set[range] = node.exp_set[range] || new Node(nid());
-				node = node.exp_set[range];
-				node.exp_range = range;
+				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node(nid());
+				node = node.exp_set[varspec.range];
+				node.exp_range = varspec.range;
 				node.exp_range_info = {type:'EXP', index:varspec.index};
 				if(varspec.explode){
 					if(node.exp_repeat && node.exp_repeat!==beginning) throw new Error('Identical consecutive expressions');
 					node.exp_repeat = beginning;
+					node.exp_repeat_name = beginning.nid;
 				}
-				// Using this enforces an order for expressions
-				node.exp_next = node.exp_next || new Node(nid());
-				node = node.exp_next;
+				if(varspec.optional){
+					beginning.next = beginning.next || node;
+				}
 			});
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
@@ -220,16 +226,22 @@ function withChange(bindings, name, value){
 
 Router.prototype.resolveURI = function resolve(uri, flags){
 	var parse_backtrack = [
-		new StateSet(0, 0, [new State(null, 0, this.tree, S.CHR)]),
+		new StateSet(0, 0, [new State(null, 0, this.tree, S.CHR, null)]),
 	];
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		var mode = state.mode;
 		log(' branch', mode, branch.nid);
+		if(branch.next){
+			log(' -next');
+			// If this expression does not match the current character, advance to the next input pattern that might
+			consumeInputCharacter(offset, chr, state, branch.next);
+		}
 		if(branch.chr[chr]){
 			log(' -chr', chr);
 			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
 		}
+		// If the exp_chr isn't matched, then skip over the following exp_range too...
 		if(branch.exp_chr[chr]){
 			log(' -exp_chr', chr, branch.exp_chr[chr].nid);
 			parse_chr.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_chr_info));
@@ -240,22 +252,20 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				log(' -exp_range', branch.exp_range);
 				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_range_info));
 				return;
+			}else if(branch.exp_repeat){
+				log(' -exp_repeat');
+				// Push repeat parsing first before everything else (lowest priority)
+				parse_backtrack.push(new StateSet(offset, 4, [
+					state.push(offset+1, branch.exp_repeat, S.CHR, 'exp_repeat')
+				]));
 			}
-		}else if(branch.exp_next){
-			log(' -exp_next');
-			// If this expression does not match the current character, advance to the next input pattern that might
-			consumeInputCharacter(offset, chr, state, branch.exp_next);
 		}
+
 		for(var rangeName in branch.exp_set){
 			var validRange = RANGES_MAP[rangeName];
 			var exprInfo = branch.exp_set[rangeName];
 			log(' -exp_set', rangeName);
 			consumeInputCharacter(offset, chr, state, exprInfo);
-		}
-
-		if(branch.exp_repeat){
-			log(' -exp_repeat');
-			consumeInputCharacter(offset, chr, state, branch.exp_repeat);
 		}
 	}
 	for(var offset = 0;;){

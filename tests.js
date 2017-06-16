@@ -4,6 +4,13 @@ console.log(file);
 var Router = require(file).Router;
 var r = new Router;
 
+function rpad(str, padlen){
+	// FIXME this returns unexpected results for objects (it returns the object untouched)
+	var padded = str;
+	while(padded.length<padlen) padded+=' ';
+	return padded;
+}
+
 function compareJSONParsedObject(a, b){
 	if(a===b) return true;
 	if((typeof a)!==(typeof b)) return false;
@@ -14,6 +21,13 @@ function compareJSONParsedObject(a, b){
 		if(Object.keys(a).length != Object.keys(b).length) return false;
 		return Object.keys(a).every(function(k){ return compareJSONParsedObject(a[k], b[k]); });
 	}
+}
+
+var cols = {
+	template: function(s){ return rpad(s, 40); },
+	uri: function(s){ return rpad(s, 30); },
+	expected: function(s){ return rpad(s, 60); },
+	actual: function(s){ return s },
 }
 
 var tests = require('./t/data.json');
@@ -35,11 +49,11 @@ tests.forEach(function(testPage){
 		//route=route[0];
 		var expected = testPage.uris[uri];
 		if(expected && !route){
-			console.log('Fail:', '\t', uri, expected, route);
+			console.log('Fail:', cols.template('    (null)'), cols.uri(uri), cols.expected(expected), cols.actual(route));
 		}else if(!route || !compareJSONParsedObject(route.data, expected)){
-			console.log('Fail:', route.template, uri, expected, route.data);
+			console.log('Fail:', cols.template(route.template), cols.uri(uri), cols.expected(expected), cols.actual(route.data));
 		}else{
-			console.log(' pass', route.template, uri, route.data);
+			console.log(' pass', cols.template(route.template), cols.uri(uri), route.data);
 		}
 	});
 });
