@@ -2,10 +2,10 @@
 module.exports.Router = Router;
 
 function log(){
-	if(process.argv.indexOf('-v')>=0) console.log.apply(console, arguments);
+	if(process.argv && process.argv.indexOf('-v')>=0) console.log.apply(console, arguments);
 }
 function dir(){
-	if(process.argv.indexOf('-v')>=0) console.dir.apply(console, arguments);
+	if(process.argv && process.argv.indexOf('-v')>=0) console.dir.apply(console, arguments);
 }
 
 function Router(){
