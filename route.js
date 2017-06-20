@@ -323,7 +323,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		log('var_list', var_list);
 		var bindings = {};
 		route.variables.forEach(function(v){
-			bindings[v.varname] = var_list[v.index];
+			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
 		});
 		return new Result(route.template, route.arg, bindings);
 	}
