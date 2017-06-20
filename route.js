@@ -125,6 +125,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				return {
 					varname: varname,
 					prefix: index ? prefixNext : prefix,
+					prefixNext: prefixNext,
 					range: modifier.range,
 					explode: explode,
 					optional: true,
@@ -244,7 +245,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		// If the exp_chr isn't matched, then skip over the following exp_range too...
 		if(branch.exp_chr[chr]){
 			log(' -exp_chr', chr, branch.exp_chr[chr].nid);
-			parse_chr.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_chr_info));
+			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_chr_info));
 		}
 		if(branch.exp_range){
 			var validRange = RANGES_MAP[branch.exp_range];
@@ -256,7 +257,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				log(' -exp_repeat');
 				// Push repeat parsing first before everything else (lowest priority)
 				parse_backtrack.push(new StateSet(offset, 4, [
-					state.push(offset+1, branch.exp_repeat, S.CHR, 'exp_repeat')
+					state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
 				]));
 			}
 		}
