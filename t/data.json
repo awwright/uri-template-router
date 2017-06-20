@@ -1,5 +1,6 @@
 [
 	{
+		"label": "substring match",
 		"templates": [
 			"http://{authority}/"
 		],
@@ -10,6 +11,7 @@
 		}
 	},
 	{
+		"label": "encoded match",
 		"templates": [
 			"http:{+hierpart}"
 		],
@@ -20,6 +22,7 @@
 		}
 	},
 	{
+		"label": "extension/suffix determination",
 		"templates": [
 			"http://localhost/{document_any}",
 			"http://localhost/{document_txt}.txt",
@@ -34,6 +37,7 @@
 		}
 	},
 	{
+		"label": "extension/suffix determination 2",
 		"templates": [
 			"/a/{any}",
 			"/a/{txt}.txt"
@@ -44,6 +48,7 @@
 		}
 	},
 	{
+		"label": "extension/suffix determination 3 (reverse order)",
 		"templates": [
 			"/b/{txt}.txt",
 			"/b/{any}"
@@ -54,6 +59,7 @@
 		}
 	},
 	{
+		"label": "path with explode modifier",
 		"templates": [
 			"http://a.localhost{/path*}"
 		],
@@ -65,6 +71,7 @@
 		}
 	},
 	{
+		"label": "path with explode modifier with fixed route",
 		"templates": [
 			"http://b.localhost/",
 			"http://b.localhost{/path*}"
@@ -97,6 +104,30 @@
 			"http://example.com/root": { },
 			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] },
 			"http://example.com/root/base/b/c?d&e": { "base":"base", "a": [ "b", "c" ], "b":[ "d", "e" ] }
+		}
+	},
+	{
+		"templates": [
+			"http://example.com/",
+			"http://example.com/root{/base}{/a*}{?b*}{#c}",
+			"http://example.com/blog{/y,m,d,slug}"
+		],
+		"uris": {
+			"http://example.com/": {},
+			"http://example.com/root": { },
+			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] },
+			"http://example.com/root/base/b/c?d&e": { "base":"base", "a": [ "b", "c" ], "b":[ "d", "e" ] }
+		}
+	},
+	{
+		"label": "pct-encoded characters",
+		"templates": [
+			"{expr}"
+		],
+		"uris": {
+			"": { "expr": "" },
+			"foo": { "expr": "foo" },
+			"%20": { "expr": "%20" }
 		}
 	}
 ]
