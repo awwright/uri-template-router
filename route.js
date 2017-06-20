@@ -302,21 +302,21 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var route = solution.branch.end;
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			history.unshift({chr:uri[item.offset], offset:item.offset, var_index:item.data.index, var_push:item.data.push});
+			history.unshift({chr:uri[item.offset], offset:item.offset, vindex:item.data.index, vpush:item.data.push});
 		}
-		log('history', history);
+		log(history);
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
-			if(item.var_push!==undefined){
-				var_list[item.var_push] = var_list[item.var_push] || [];
-				var_list[item.var_push].push('');
-			}else if(item.var_index!==undefined){
-				var varv = var_list[item.var_index];
+			if(item.vpush!==undefined){
+				var_list[item.vpush] = var_list[item.vpush] || [];
+				var_list[item.vpush].push('');
+			}else if(item.vindex!==undefined){
+				var varv = var_list[item.vindex];
 				if(Array.isArray(varv)){
 					varv[varv.length-1] = varv[varv.length-1] + item.chr;
 				}else{
-					var_list[item.var_index] = (varv||'') + item.chr;
+					var_list[item.vindex] = (varv||'') + item.chr;
 				}
 			}
 		}
