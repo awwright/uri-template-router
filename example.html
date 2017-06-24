@@ -42,8 +42,10 @@ function alot(){
 		],
 		['.'],
 		['com', 'org', 'net', 'co', 'io', 'xyz', 'luxury', 'jp', 'cn', 'tv'],
-		['/', '/index', '/page/{id}', '/user/{id}', '/blog/{yyyy}/{mm}/{dd}/{slug}', '/~{user}', '/listing/{id}', '/cart', '/status','/path{/path*}'],
-		['', '.html', '.json', '.txt', '.xml']
+		['/', '/index', '/page/{id}', '/user/{id}', '/blog{/yyyy,mm,dd,slug}', '/~{user}', '/listing/{id}',
+			'/cart', '/status','/path{/path*}', '/{?x,y}'
+		],
+		['', '.html', '.json', '.txt', '.xml'],
 	];
 	var patterns = pieces.reduce(function(state, list){
 		var copy = [];

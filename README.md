@@ -77,14 +77,12 @@ Variables are alphanumeric, and optionally end with a variable modifier:
 
 URI Template Router returns a single, best matching template and the values that the expressions matched.
 
-### Characters are preferred over expressions
-
-The matching processor will only return a single, best match. If there's multiple matching templates, the processor evaluates the URI left to right, preferring to match templates in the following order:
+The processor evaluates the URI left to right, preferring to match templates in the following order:
 
 0. Matching a literal character
 0. Matching an expression prefix
 0. Matching an expression body
-0. Matching a repeat of an expression (marked with the explode modifier)
+0. Repeating the current (if marked with the explode modifier)
 
 For example, given the URI <`.../foo.html`>, the following templates would be preferred in the given order:
 
@@ -92,8 +90,6 @@ For example, given the URI <`.../foo.html`>, the following templates would be pr
 0. <`.../foo.{ext}`>
 0. <`.../{base}.html`>
 0. <`.../{file}`>
-
-Routes are hierarchical.
 
 
 ### ToDo
@@ -103,3 +99,5 @@ Routes are hierarchical.
 * Cast variables to numbers
 * Access to raw URI data
 * Dump error on invalid URI
+* return next() call to continue evaluating state tree
+* Variable flags
