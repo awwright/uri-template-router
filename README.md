@@ -14,28 +14,36 @@ r.addTemplate('http://example.com/root{/base}{/a*}{?b*}{#c}', {}, 'complex_type'
 r.addTemplate('http://example.com/blog{/y,m,d,slug}', {}, 'blog_post');
 
 r.resolveURI('http://example.com/'); // returns:
-[ { pattern: 'http://example.com/',
-    arg: 'index',
-    bindings: undefined } ]
+{
+  pattern: 'http://example.com/',
+  arg: 'index',
+  bindings: undefined,
+}
 
 r.resolveURI('http://example.com/qfoo'); // returns:
-[ { pattern: 'http://example.com/q{n}',
-    arg: 'q_page',
-    bindings: { n: 'foo' } } ]
+{
+  pattern: 'http://example.com/q{n}',
+  arg: 'q_page',
+  bindings: { n: 'foo' },
+}
 
 r.resolveURI('http://example.com/root/q/1/2/3?key1=one&key2=2'); // returns:
-[ { pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
-    arg: 'complex_type',
-    bindings: {
-       base: 'q',
-       a: [ '1', '2', '3' ],
-       b: [ 'key1=one', 'key2=2' ],
-} } ]
+{
+  pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
+  arg: 'complex_type',
+  bindings: {
+     base: 'q',
+     a: [ '1', '2', '3' ],
+     b: [ 'key1=one', 'key2=2' ],
+  },
+}
 
 r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // returns:
-[ { pattern: 'http://example.com/blog{/y,m,d,slug}',
-    arg: 'blog_post',
-    bindings: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' } } ]
+{
+  pattern: 'http://example.com/blog{/y,m,d,slug}',
+  arg: 'blog_post',
+  bindings: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
+}
 ```
 
 ## URI Template Format
