@@ -20,22 +20,29 @@ nid.i = 0;
 
 function Node(nid){
 	this.nid = nid;
+	this.chr_offset = null;
 	// Automatically matches the given template
-	this.end = null;
-	// The characters we can reach next
-	// If in an expression, this is potentially the end of the expression
-	this.chr = {};
-	// Decend into this for more alternatives
-	this.next = null;
 	// Expressions to decend into
 	this.exp_match = [];
 	// If we're currently in an expression
-	this.exp_chr = {};
-	this.exp_chr_info = null;
 	this.exp_range = null;
-	this.exp_range_info = null;
-	this.exp_set = null;
 	this.exp_repeat = null;
+	this.exp_repeat_nid = null;
+	this.exp_info = undefined;
+	// If we reach this branch, declare a match for this template
+	this.end = null;
+
+	// Literal characters to match
+	this.chr = {};
+	// Expression prefixes to match
+	this.exp_chr = {};
+	// Alternative sets to try matching at the same time
+	this.exp_set = {};
+	// Decend into this for more alternatives
+	this.next = null;
+}
+Node.prototype.toString = function toString(){
+	return '[Node '+this.nid+']';
 }
 
 function Route(template, variables, arg){
@@ -142,26 +149,30 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				var range = varspec.range + (varspec.explode?'*':'')
 
 				// Using this enforces an order for expressions
-				node.next = node.next || new Node(nid());
-				node = node.next;
+				//node.next = node.next || new Node(nid());
+				//node = node.next;
 				var beginning = node;
 				if(varspec.prefix){
 					node.exp_chr[varspec.prefix] = node.exp_chr[varspec.prefix] || new Node(nid());
 					node = node.exp_chr[varspec.prefix];
-					node.exp_chr_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
+					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
+				var body = node;
 				node.exp_set = node.exp_set || {};
 				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node(nid());
 				node = node.exp_set[varspec.range];
 				node.exp_range = varspec.range;
-				node.exp_range_info = {type:'EXP', index:varspec.index};
+				node.exp_info = {type:'EXP', index:varspec.index};
 				if(varspec.explode){
+					node.exp_chr[varspec.prefixNext] = node.exp_chr[varspec.prefixNext] || new Node(nid());
+					node = node.exp_chr[varspec.prefixNext];
 					if(node.exp_repeat && node.exp_repeat!==beginning) throw new Error('Identical consecutive expressions');
-					node.exp_repeat = beginning;
-					node.exp_repeat_name = beginning.nid;
+					node.exp_repeat = body;
+					node.exp_repeat_nid = body.nid;
 				}
 				if(varspec.optional){
-					beginning.next = beginning.next || node;
+					//beginning.next = beginning.next || node;
+					body.next = body.next || node;
 				}
 			});
 		}else{
@@ -245,21 +256,22 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		// If the exp_chr isn't matched, then skip over the following exp_range too...
 		if(branch.exp_chr[chr]){
 			log(' -exp_chr', chr, branch.exp_chr[chr].nid);
-			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_chr_info));
+			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_info));
 		}
 		if(branch.exp_range){
 			var validRange = RANGES_MAP[branch.exp_range];
 			if(chr in validRange){
 				log(' -exp_range', branch.exp_range);
-				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_range_info));
+				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
 				return;
-			}else if(branch.exp_repeat){
-				log(' -exp_repeat');
-				// Push repeat parsing first before everything else (lowest priority)
-				parse_backtrack.push(new StateSet(offset, 4, [
-					state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
-				]));
 			}
+		}
+		if(branch.exp_repeat){
+			log(' -exp_repeat', branch.exp_repeat.nid);
+			// Push repeat parsing first before everything else (lowest priority)
+			parse_backtrack.push(new StateSet(offset, 4, [
+				state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
+			]));
 		}
 
 		for(var rangeName in branch.exp_set){
@@ -274,6 +286,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		//log(stateset_this);
 		if(!stateset_this) break;
 		offset = stateset_this.offset;
+		if(offset > uri.length) throw new Error('Overgrew offset');
 		var parse_chr = new StateSet(offset+1, 3, []);
 		var parse_pfx = new StateSet(offset+1, 2, []);
 		var parse_exp = new StateSet(offset+1, 1, []);
@@ -302,9 +315,11 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var route = solution.branch.end;
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			history.unshift({chr:uri[item.offset], offset:item.offset, vindex:item.data.index, vpush:item.data.push});
+			dir(item.branch);
+			var data = item.branch.exp_info;
+			history.unshift({chr:uri[item.offset], offset:item.offset, vindex:data&&data.index, vpush:data&&data.push});
 		}
-		log(history);
+		dir(history);
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
@@ -320,7 +335,6 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				}
 			}
 		}
-		log('var_list', var_list);
 		var bindings = {};
 		route.variables.forEach(function(v){
 			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
