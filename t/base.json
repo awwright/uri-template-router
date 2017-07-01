@@ -84,39 +84,36 @@
 	},
 	{
 		"templates": [
-			"http://c.localhost{/path*}{?query*}"
+			"http://c.localhost{/path*}"
 		],
 		"uris": {
 			"http://c.localhost": {},
 			"http://c.localhost/": { "path": [""] },
-			"http://c.localhost/a": { "path": [ "a" ] },
-			"http://c.localhost/a?x=y": { "path": [ "a" ], "query": ["x=y"] }
+			"http://c.localhost/a": { "path": [ "a" ] }
 		}
 	},
 	{
 		"templates": [
 			"http://example.com/",
-			"http://example.com/root{/base}{/a*}{?b*}{#c}",
+			"http://example.com/root{/base}{/a*}",
 			"http://example.com/blog{/y,m,d,slug}"
 		],
 		"uris": {
 			"http://example.com/": {},
 			"http://example.com/root": { },
-			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] },
-			"http://example.com/root/base/b/c?d&e": { "base":"base", "a": [ "b", "c" ], "b":[ "d", "e" ] }
+			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] }
 		}
 	},
 	{
 		"templates": [
 			"http://example.com/",
-			"http://example.com/root{/base}{/a*}{?b*}{#c}",
+			"http://example.com/root{/base}{/a*}",
 			"http://example.com/blog{/y,m,d,slug}"
 		],
 		"uris": {
 			"http://example.com/": {},
 			"http://example.com/root": { },
-			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] },
-			"http://example.com/root/base/b/c?d&e": { "base":"base", "a": [ "b", "c" ], "b":[ "d", "e" ] }
+			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] }
 		}
 	},
 	{

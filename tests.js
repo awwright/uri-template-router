@@ -30,7 +30,7 @@ var cols = {
 	actual: function(s){ return s },
 }
 
-var tests = require('./t/data.json');
+var tests = require('./t/base.json');
 tests.forEach(function(testPage){
 	var router = new Router;
 	testPage.templates.forEach(function(template, i){
