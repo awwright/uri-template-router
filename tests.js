@@ -49,11 +49,13 @@ tests.forEach(function(testPage){
 		//route=route[0];
 		var expected = testPage.uris[uri];
 		if(expected && !route){
-			console.log('Fail:', cols.template('    (null)'), cols.uri(uri), cols.expected(expected), cols.actual(route));
-		}else if(!route || !compareJSONParsedObject(route.data, expected)){
-			console.log('Fail:', cols.template(route.template), cols.uri(uri), cols.expected(expected), cols.actual(route.data));
+			console.log('FAIL:', cols.uri(uri), cols.template(' (expected match)'), cols.expected(expected));
+		}else if(!expected && !route){
+			console.log('Pass:', cols.uri(uri), cols.template(' (none)'), cols.expected(' (none)'));
+		}else if(!compareJSONParsedObject(route.data, expected)){
+			console.log('FAIL:', cols.uri(uri), cols.template(route.template), cols.expected(expected), cols.actual(route.data));
 		}else{
-			console.log(' pass', cols.template(route.template), cols.uri(uri), route.data);
+			console.log('Pass:', cols.uri(uri), cols.template(route.template), route.data);
 		}
 	});
 });

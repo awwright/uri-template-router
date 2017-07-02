@@ -7,7 +7,8 @@
 		"uris": {
 			"http://example.com/": { "authority": "example.com" },
 			"http://example.org/": { "authority": "example.org" },
-			"http://www.example.net/": { "authority": "www.example.net" }
+			"http://www.example.net/": { "authority": "www.example.net" },
+			"https://example.com/": null
 		}
 	},
 	{
@@ -18,7 +19,9 @@
 		"uris": {
 			"http://example.com/": { "hierpart": "//example.com/" },
 			"http://example.org/": { "hierpart": "//example.org/" },
-			"http://www.example.net/": { "hierpart": "//www.example.net/" }
+			"http://www.example.net/": { "hierpart": "//www.example.net/" },
+			"https://example.com/": null,
+			"urn:uuid:foo": null
 		}
 	},
 	{
@@ -67,7 +70,11 @@
 			"http://a.localhost": {},
 			"http://a.localhost/": { "path": [ "" ] },
 			"http://a.localhost/a": { "path": [ "a" ] },
-			"http://a.localhost/a/b/c/d/e/f/g": { "path": [ "a", "b", "c", "d", "e", "f", "g" ] }
+			"http://a.localhost/a/": { "path": [ "a", "" ] },
+			"http://a.localhost/a/b": { "path": [ "a", "b" ] },
+			"http://a.localhost/a/b/c": { "path": [ "a", "b", "c" ] },
+			"http://a.localhost/a/b/c/d/e": { "path": [ "a", "b", "c", "d", "e" ] },
+			"http://a.localhost/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] }
 		}
 	},
 	{
