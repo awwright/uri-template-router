@@ -171,8 +171,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					node.exp_repeat_nid = body.nid;
 				}
 				if(varspec.optional){
-					//beginning.next = beginning.next || node;
-					body.next = body.next || node;
+					beginning.next = beginning.next || node;
 				}
 			});
 		}else{
@@ -245,7 +244,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var mode = state.mode;
 		log(' branch', mode, branch.nid);
 		if(branch.next){
-			log(' -next');
+			log(' -next', branch.next.nid);
 			// If this expression does not match the current character, advance to the next input pattern that might
 			consumeInputCharacter(offset, chr, state, branch.next);
 		}
@@ -267,7 +266,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			}
 		}
 		if(branch.exp_repeat){
-			log(' -exp_repeat', branch.exp_repeat.nid);
+			log(' exp_repeat', branch.exp_repeat.nid);
 			// Push repeat parsing first before everything else (lowest priority)
 			parse_backtrack.push(new StateSet(offset, 4, [
 				state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
@@ -277,7 +276,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		for(var rangeName in branch.exp_set){
 			var validRange = RANGES_MAP[rangeName];
 			var exprInfo = branch.exp_set[rangeName];
-			log(' -exp_set', rangeName);
+			log(' exp_set', rangeName);
 			consumeInputCharacter(offset, chr, state, exprInfo);
 		}
 	}

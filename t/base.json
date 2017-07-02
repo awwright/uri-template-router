@@ -72,7 +72,9 @@
 			"http://a.localhost/a": { "path": [ "a" ] },
 			"http://a.localhost/a/": { "path": [ "a", "" ] },
 			"http://a.localhost/a/b": { "path": [ "a", "b" ] },
+			"http://a.localhost/a/b/": { "path": [ "a", "b", "" ] },
 			"http://a.localhost/a/b/c": { "path": [ "a", "b", "c" ] },
+			"http://a.localhost/a/b/c/": { "path": [ "a", "b", "c", "" ] },
 			"http://a.localhost/a/b/c/d/e": { "path": [ "a", "b", "c", "d", "e" ] },
 			"http://a.localhost/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] }
 		}
@@ -120,6 +122,10 @@
 		"uris": {
 			"http://example.com/": {},
 			"http://example.com/root": { },
+			"http://example.com/root/base": { "base":"base" },
+			"http://example.com/root/base/": { "base":"base", "a": [ "" ] },
+			"http://example.com/root/base/b": { "base":"base", "a": [ "b" ] },
+			"http://example.com/root/base/b/": { "base":"base", "a": [ "b", "" ] },
 			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] }
 		}
 	},

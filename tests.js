@@ -49,13 +49,13 @@ tests.forEach(function(testPage){
 		//route=route[0];
 		var expected = testPage.uris[uri];
 		if(expected && !route){
-			console.log('FAIL:', cols.uri(uri), cols.template(' (expected match)'), cols.expected(expected));
+			console.log('Missing: ', cols.uri(uri), cols.template(' (expected match)'), cols.expected(expected));
 		}else if(!expected && !route){
-			console.log('Pass:', cols.uri(uri), cols.template(' (none)'), cols.expected(' (none)'));
+			console.log('Pass:    ', cols.uri(uri), cols.template(' (none)'), cols.expected(' (none)'));
 		}else if(!compareJSONParsedObject(route.data, expected)){
-			console.log('FAIL:', cols.uri(uri), cols.template(route.template), cols.expected(expected), cols.actual(route.data));
+			console.log('Mismatch:', cols.uri(uri), cols.template(route.template), cols.expected(expected), cols.actual(route.data));
 		}else{
-			console.log('Pass:', cols.uri(uri), cols.template(route.template), route.data);
+			console.log('Pass:    ', cols.uri(uri), cols.template(route.template), route.data);
 		}
 	});
 });
