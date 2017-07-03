@@ -164,11 +164,15 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				node.exp_range = varspec.range;
 				node.exp_info = {type:'EXP', index:varspec.index};
 				if(varspec.explode){
+					var beginning2 = node;
 					node.exp_chr[varspec.prefixNext] = node.exp_chr[varspec.prefixNext] || new Node(nid());
 					node = node.exp_chr[varspec.prefixNext];
+					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 					if(node.exp_repeat && node.exp_repeat!==beginning) throw new Error('Identical consecutive expressions');
-					node.exp_repeat = body;
-					node.exp_repeat_nid = body.nid;
+					//node.exp_repeat = body;
+					//node.exp_repeat_nid = body.nid;
+					// The second part and beyond is optional
+					beginning2.next = beginning2.next || node;
 				}
 				if(varspec.optional){
 					beginning.next = beginning.next || node;
