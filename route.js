@@ -259,13 +259,13 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		// If the exp_chr isn't matched, then skip over the following exp_range too...
 		if(branch.exp_chr[chr]){
 			log(' -exp_chr', chr, branch.exp_chr[chr].nid);
-			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, branch.exp_chr[chr].exp_info));
+			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, 'exp_chr'));
 		}
 		if(branch.exp_range){
 			var validRange = RANGES_MAP[branch.exp_range];
 			if(chr in validRange){
 				log(' -exp_range', branch.exp_range);
-				parse_exp.alts.push(state.push(offset, branch, S.CHR, branch.exp_info));
+				parse_exp.alts.push(state.push(offset, branch, S.CHR, 'exp_range'));
 				return;
 			}
 		}
