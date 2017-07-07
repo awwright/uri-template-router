@@ -76,7 +76,17 @@
 			"http://a.localhost/a/b/c": { "path": [ "a", "b", "c" ] },
 			"http://a.localhost/a/b/c/": { "path": [ "a", "b", "c", "" ] },
 			"http://a.localhost/a/b/c/d/e": { "path": [ "a", "b", "c", "d", "e" ] },
-			"http://a.localhost/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] }
+			"http://a.localhost/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] },
+			"http://a.localhost!": null,
+			"http://a.localhost/!": null,
+			"http://a.localhost/a!": null,
+			"http://a.localhost/a/!": null,
+			"http://a.localhost/a/b!": null,
+			"http://a.localhost/a/b/!": null,
+			"http://a.localhost/a/b/c!": null,
+			"http://a.localhost/a/b/c/!": null,
+			"http://a.localhost/a/b/c/d/e!": null,
+			"http://a.localhost/a/b/c/d/e/!": null
 		}
 	},
 	{
