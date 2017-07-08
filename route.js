@@ -62,6 +62,12 @@ function Result(template, arg, bindings){
 var RANGES = {
 	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
 	RESERVED_UNRESERVED: ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~'],
+	QUERY: [
+		'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
+		"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
+		':', '@', // colon and at-sign (from pchar)
+		'/', '?', // and slash and question-mark
+	],
 };
 function getRangeMap(range){
 	var validMap = {};
