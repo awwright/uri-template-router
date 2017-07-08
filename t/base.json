@@ -97,7 +97,7 @@
 		],
 		"uris": {
 			"http://b.localhost": {},
-			"http://b.localhost/": { "path": [""] },
+			"http://b.localhost/": {},
 			"http://b.localhost/a": { "path": [ "a" ] }
 		}
 	},
