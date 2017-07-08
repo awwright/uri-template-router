@@ -28,8 +28,6 @@ function Node(nid){
 	this.exp_range = null;
 	this.exp_repeat = null;
 	this.exp_repeat_nid = null;
-	this.exp_skp = null;
-	this.exp_skp_nid = null;
 	this.exp_info = undefined;
 	// If we reach this branch, declare a match for this template
 	this.end = null;
@@ -42,6 +40,8 @@ function Node(nid){
 	this.exp_set = {};
 	// Decend into this for more alternatives
 	this.next = null;
+	this.exp_skp = null;
+	this.exp_skp_nid = null;
 }
 Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
@@ -209,13 +209,6 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 	node.end = new Route(uri, variables, arg);
 }
 
-function StateSet(offset, tier, alternatives){
-	this.offset = offset;
-	this.tier = tier;
-	// A list of equal alternative candidates for processing this input character
-	this.alts = alternatives;
-}
-
 var S = {
 	EOF: 10, // Expending end of input
 	CHR: 20, // Expecting a character, or "%" to begin a pct-encoded sequence
@@ -224,6 +217,14 @@ var S = {
 };
 // Enable for testing
 for(var n in S) S[n]=n;
+
+// The StateSet tells us the character we're going to parse and the possible ways we could process it
+function StateSet(offset, tier, alternatives){
+	this.offset = offset;
+	this.tier = tier;
+	// A list of equal alternative candidates for processing this input character
+	this.alts = alternatives;
+}
 
 function State(prev, offset, branch, mode, data){
 	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
@@ -263,43 +264,41 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		var mode = state.mode;
-		log(' branch', mode, branch.nid);
-		if(branch.exp_skp){
-			log(' -exp_skp', branch.exp_skp.nid);
-			// If this expression does not match the current character, advance to the next input pattern that might
-			consumeInputCharacter(offset, chr, state, branch.exp_skp);
-			//parse_skp.alts.push(new State(state.prev, offset, branch.exp_skp, S.CHR, 'exp_skp'));
-		}
 		if(branch.chr[chr]){
-			log(' -chr', chr);
+			log(' +parse_chr', chr);
 			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
 		}
 		// If the exp_chr isn't matched, then skip over the following exp_range too...
 		if(branch.exp_chr[chr]){
-			log(' -exp_chr', chr, branch.exp_chr[chr].nid);
+			log(' +parse_pfx', branch.exp_chr[chr].nid, chr);
 			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, 'exp_chr'));
+		}
+		for(var rangeName in branch.exp_set){
+			var validRange = RANGES_MAP[rangeName];
+			var exprInfo = branch.exp_set[rangeName];
+			log(' exp_set', exprInfo.nid, rangeName);
+			consumeInputCharacter(offset, chr, state, exprInfo);
 		}
 		if(branch.exp_range){
 			var validRange = RANGES_MAP[branch.exp_range];
 			if(chr in validRange){
-				log(' -exp_range', branch.exp_range);
+				log(' +parse_exp', branch.nid, branch.exp_range);
 				parse_exp.alts.push(state.push(offset, branch, S.CHR, 'exp_range'));
 				return;
 			}
 		}
+		if(branch.exp_skp){
+			log(' +parse_skp', branch.exp_skp.nid);
+			// If this expression does not match the current character, advance to the next input pattern that might
+			//consumeInputCharacter(offset, chr, state, branch.exp_skp);
+			parse_skp.alts.push(new State(state.prev, state.offset, branch.exp_skp, S.CHR, 'exp_skp'));
+		}
 		if(branch.exp_repeat){
-			log(' exp_repeat', branch.exp_repeat.nid);
+			log(' +parse_backtrack', branch.exp_repeat.nid);
 			// Push repeat parsing first before everything else (lowest priority)
 			parse_backtrack.push(new StateSet(offset, 4, [
 				state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
 			]));
-		}
-
-		for(var rangeName in branch.exp_set){
-			var validRange = RANGES_MAP[rangeName];
-			var exprInfo = branch.exp_set[rangeName];
-			log(' exp_set', rangeName);
-			consumeInputCharacter(offset, chr, state, exprInfo);
 		}
 	}
 	for(var offset = 0;;){
@@ -307,17 +306,19 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		//log(stateset_this);
 		if(!stateset_this) break;
 		offset = stateset_this.offset;
+		if(offset > uri.length) continue;
 		if(offset > uri.length) throw new Error('Overgrew offset');
 		var parse_chr = new StateSet(offset+1, 4, []);
 		var parse_pfx = new StateSet(offset+1, 3, []);
 		var parse_exp = new StateSet(offset+1, 2, []);
-		var parse_skp = new StateSet(offset+1, 1, []);
+		var parse_skp = new StateSet(offset, 5, []);
 		// This will set chr===undefined for the EOF position
 		// We could also use another value like "\0" or similar to represent EOF
 		var chr = uri[offset];
-		log('Parse('+offset+') '+chr);
+		log('Parse('+offset+')', chr);
 		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
 			var alt = stateset_this.alts[alt_i];
+			log(' branch'+alt_i, alt.branch.nid);
 			consumeInputCharacter(offset, chr, alt, alt.branch);
 		}
 		// Push expressions onto the stack, top (highest priority) of stack is last
@@ -330,7 +331,12 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var solutions = parse_chr.alts
 			.filter(function(v){ return v.branch && v.branch.end; })
 			.map(function(v){ return finish(v); });
-		if(solutions[0]) return solutions[0];
+		if(solutions.length>1){
+			log(solutions);
+			throw new Error('Multiple equal templates matched');
+		}else if(solutions.length==1){
+			return solutions[0];
+		}
 	}
 
 

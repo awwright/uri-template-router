@@ -64,51 +64,51 @@
 	{
 		"label": "path with explode modifier",
 		"templates": [
-			"http://a.localhost{/path*}"
+			"http://a.local{/path*}"
 		],
 		"uris": {
-			"http://a.localhost": {},
-			"http://a.localhost/": { "path": [ "" ] },
-			"http://a.localhost/a": { "path": [ "a" ] },
-			"http://a.localhost/a/": { "path": [ "a", "" ] },
-			"http://a.localhost/a/b": { "path": [ "a", "b" ] },
-			"http://a.localhost/a/b/": { "path": [ "a", "b", "" ] },
-			"http://a.localhost/a/b/c": { "path": [ "a", "b", "c" ] },
-			"http://a.localhost/a/b/c/": { "path": [ "a", "b", "c", "" ] },
-			"http://a.localhost/a/b/c/d/e": { "path": [ "a", "b", "c", "d", "e" ] },
-			"http://a.localhost/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] },
-			"http://a.localhost!": null,
-			"http://a.localhost/!": null,
-			"http://a.localhost/a!": null,
-			"http://a.localhost/a/!": null,
-			"http://a.localhost/a/b!": null,
-			"http://a.localhost/a/b/!": null,
-			"http://a.localhost/a/b/c!": null,
-			"http://a.localhost/a/b/c/!": null,
-			"http://a.localhost/a/b/c/d/e!": null,
-			"http://a.localhost/a/b/c/d/e/!": null
+			"http://a.local": {},
+			"http://a.local/": { "path": [ "" ] },
+			"http://a.local/a": { "path": [ "a" ] },
+			"http://a.local/a/": { "path": [ "a", "" ] },
+			"http://a.local/a/b": { "path": [ "a", "b" ] },
+			"http://a.local/a/b/": { "path": [ "a", "b", "" ] },
+			"http://a.local/a/b/c": { "path": [ "a", "b", "c" ] },
+			"http://a.local/a/b/c/": { "path": [ "a", "b", "c", "" ] },
+			"http://a.local/a/b/c/d/e": { "path": [ "a", "b", "c", "d", "e" ] },
+			"http://a.local/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] },
+			"http://a.local!": null,
+			"http://a.local/!": null,
+			"http://a.local/a!": null,
+			"http://a.local/a/!": null,
+			"http://a.local/a/b!": null,
+			"http://a.local/a/b/!": null,
+			"http://a.local/a/b/c!": null,
+			"http://a.local/a/b/c/!": null,
+			"http://a.local/a/b/c/d/e!": null,
+			"http://a.local/a/b/c/d/e/!": null
 		}
 	},
 	{
 		"label": "path with explode modifier with fixed route",
 		"templates": [
-			"http://b.localhost/",
-			"http://b.localhost{/path*}"
+			"http://b.local/",
+			"http://b.local{/path*}"
 		],
 		"uris": {
-			"http://b.localhost": {},
-			"http://b.localhost/": {},
-			"http://b.localhost/a": { "path": [ "a" ] }
+			"http://b.local": {},
+			"http://b.local/": {},
+			"http://b.local/a": { "path": [ "a" ] }
 		}
 	},
 	{
 		"templates": [
-			"http://c.localhost{/path*}"
+			"http://c.local{/path*}"
 		],
 		"uris": {
-			"http://c.localhost": {},
-			"http://c.localhost/": { "path": [""] },
-			"http://c.localhost/a": { "path": [ "a" ] }
+			"http://c.local": {},
+			"http://c.local/": { "path": [""] },
+			"http://c.local/a": { "path": [ "a" ] }
 		}
 	},
 	{
