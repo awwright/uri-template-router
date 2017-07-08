@@ -42,7 +42,7 @@ tests.forEach(function(testPage){
 		try {
 			var route = router.resolveURI(uri);
 		}catch(e){
-			console.log('error', uri, expected, route);
+			console.log('error', uri, expected, route, e.stack);
 			return;
 		}
 		//console.log(route);

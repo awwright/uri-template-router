@@ -28,6 +28,8 @@ function Node(nid){
 	this.exp_range = null;
 	this.exp_repeat = null;
 	this.exp_repeat_nid = null;
+	this.exp_skp = null;
+	this.exp_skp_nid = null;
 	this.exp_info = undefined;
 	// If we reach this branch, declare a match for this template
 	this.end = null;
@@ -146,37 +148,46 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
 				variables[varspec.index] = varspec;
-				var range = varspec.range + (varspec.explode?'*':'')
+				var range = varspec.range + (varspec.explode?'*':'');
 
 				// Using this enforces an order for expressions
 				//node.next = node.next || new Node(nid());
 				//node = node.next;
-				var beginning = node;
+				var setNext = [];
+				if(varspec.optional){
+					setNext.push(node);
+				}
 				if(varspec.prefix){
 					node.exp_chr[varspec.prefix] = node.exp_chr[varspec.prefix] || new Node(nid());
 					node = node.exp_chr[varspec.prefix];
 					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
-				var body = node;
 				node.exp_set = node.exp_set || {};
 				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node(nid());
 				node = node.exp_set[varspec.range];
 				node.exp_range = varspec.range;
 				node.exp_info = {type:'EXP', index:varspec.index};
 				if(varspec.explode){
-					var beginning2 = node;
+					// The optional stuff
+					// Second expression prefix
+					setNext.push(node);
 					node.exp_chr[varspec.prefixNext] = node.exp_chr[varspec.prefixNext] || new Node(nid());
 					node = node.exp_chr[varspec.prefixNext];
 					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
-					if(node.exp_repeat && node.exp_repeat!==beginning) throw new Error('Identical consecutive expressions');
-					//node.exp_repeat = body;
-					//node.exp_repeat_nid = body.nid;
-					// The second part and beyond is optional
-					beginning2.next = beginning2.next || node;
+					// Second expression body
+					node.exp_set = node.exp_set || {};
+					node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node(nid());
+					node = node.exp_set[varspec.range];
+					node.exp_range = varspec.range;
+					node.exp_info = {type:'EXP', index:varspec.index};
 				}
-				if(varspec.optional){
-					beginning.next = beginning.next || node;
-				}
+				setNext.forEach(function(n){
+					if(n.exp_skp && n.exp_skp!==node){
+						throw new Error('Diverging end');
+					}else{
+						n.exp_skp = node;
+					}
+				});
 			});
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
@@ -247,10 +258,11 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		var mode = state.mode;
 		log(' branch', mode, branch.nid);
-		if(branch.next){
-			log(' -next', branch.next.nid);
+		if(branch.exp_skp){
+			log(' -exp_skp', branch.exp_skp.nid);
 			// If this expression does not match the current character, advance to the next input pattern that might
-			consumeInputCharacter(offset, chr, state, branch.next);
+			consumeInputCharacter(offset, chr, state, branch.exp_skp);
+			//parse_skp.alts.push(new State(state.prev, offset, branch.exp_skp, S.CHR, 'exp_skp'));
 		}
 		if(branch.chr[chr]){
 			log(' -chr', chr);
@@ -290,9 +302,10 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(!stateset_this) break;
 		offset = stateset_this.offset;
 		if(offset > uri.length) throw new Error('Overgrew offset');
-		var parse_chr = new StateSet(offset+1, 3, []);
-		var parse_pfx = new StateSet(offset+1, 2, []);
-		var parse_exp = new StateSet(offset+1, 1, []);
+		var parse_chr = new StateSet(offset+1, 4, []);
+		var parse_pfx = new StateSet(offset+1, 3, []);
+		var parse_exp = new StateSet(offset+1, 2, []);
+		var parse_skp = new StateSet(offset+1, 1, []);
 		// This will set chr===undefined for the EOF position
 		// We could also use another value like "\0" or similar to represent EOF
 		var chr = uri[offset];
@@ -302,6 +315,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			consumeInputCharacter(offset, chr, alt, alt.branch);
 		}
 		// Push expressions onto the stack, top (highest priority) of stack is last
+		if(parse_skp.alts.length) parse_backtrack.push(parse_skp);
 		if(parse_exp.alts.length) parse_backtrack.push(parse_exp);
 		if(parse_pfx.alts.length) parse_backtrack.push(parse_pfx);
 		if(parse_chr.alts.length) parse_backtrack.push(parse_chr);
@@ -318,7 +332,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var route = solution.branch.end;
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			dir(item.branch);
+			//dir(item.branch);
 			var data = item.branch.exp_info;
 			history.unshift({chr:uri[item.offset], offset:item.offset, vindex:data&&data.index, vpush:data&&data.push});
 		}
