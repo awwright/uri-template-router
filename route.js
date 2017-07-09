@@ -10,7 +10,7 @@ function dir(){
 
 function Router(){
 	this.routes = [];
-	this.tree = new Node(nid());
+	this.tree = new Node;
 }
 
 function nid(){
@@ -18,8 +18,8 @@ function nid(){
 }
 nid.i = 0;
 
-function Node(nid){
-	this.nid = nid;
+function Node(){
+	this.nid = nid();
 	this.chr_offset = null;
 	// Automatically matches the given template
 	// Expressions to decend into
@@ -156,20 +156,17 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				variables[varspec.index] = varspec;
 				var range = varspec.range + (varspec.explode?'*':'');
 
-				// Using this enforces an order for expressions
-				//node.next = node.next || new Node(nid());
-				//node = node.next;
 				var setNext = [];
 				if(varspec.optional){
 					setNext.push(node);
 				}
 				if(varspec.prefix){
-					node.exp_pfx[varspec.prefix] = node.exp_pfx[varspec.prefix] || new Node(nid());
+					node.exp_pfx[varspec.prefix] = node.exp_pfx[varspec.prefix] || new Node;
 					node = node.exp_pfx[varspec.prefix];
 					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
 				node.exp_set = node.exp_set || {};
-				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node(nid());
+				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
 				node = node.exp_set[varspec.range];
 				node.exp_range = varspec.range;
 				node.exp_info = {type:'EXP', index:varspec.index};
@@ -177,12 +174,12 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					// The optional stuff
 					// Second expression prefix
 					setNext.push(node);
-					node.exp_pfx[varspec.prefixNext] = node.exp_pfx[varspec.prefixNext] || new Node(nid());
+					node.exp_pfx[varspec.prefixNext] = node.exp_pfx[varspec.prefixNext] || new Node;
 					node = node.exp_pfx[varspec.prefixNext];
 					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 					// Second expression body
 					node.exp_set = node.exp_set || {};
-					node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node(nid());
+					node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
 					node = node.exp_set[varspec.range];
 					node.exp_range = varspec.range;
 					node.exp_info = {type:'EXP', index:varspec.index};
@@ -198,7 +195,7 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
 			// if chr is undefined, this will set the key "undefined"
-			node.chr[chr] = node.chr[chr] || new Node(nid());
+			node.chr[chr] = node.chr[chr] || new Node;
 			node = node.chr[chr];
 			node.chr_offset = uri_i;
 		}
@@ -258,12 +255,12 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		var mode = state.mode;
 		if(branch.chr[chr]){
-			log(' +parse_chr', chr);
+			log(' +parse_chr', parse_chr.offset, branch.chr[chr].nid);
 			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
 		}
 		// If the exp_pfx isn't matched, then skip over the following exp_range too...
 		if(branch.exp_pfx[chr]){
-			log(' +parse_pfx', branch.exp_pfx[chr].nid, chr);
+			log(' +parse_pfx', parse_pfx.offset, branch.exp_pfx[chr].nid);
 			parse_pfx.alts.push(state.push(offset, branch.exp_pfx[chr], S.CHR, 'exp_pfx'));
 		}
 		for(var rangeName in branch.exp_set){
@@ -275,13 +272,13 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		if(branch.exp_range){
 			var validRange = RANGES_MAP[branch.exp_range];
 			if(chr in validRange){
-				log(' +parse_exp', branch.nid, branch.exp_range);
+				log(' +parse_exp', parse_exp.offset, branch.nid, branch.exp_range);
 				parse_exp.alts.push(state.push(offset, branch, S.CHR, 'exp_range'));
 				return;
 			}
 		}
 		if(branch.exp_skp){
-			log(' +parse_skp', branch.exp_skp.nid);
+			log(' +parse_skp', parse_skp.offset, branch.exp_skp.nid);
 			// If this expression does not match the current character, advance to the next input pattern that might
 			//consumeInputCharacter(offset, chr, state, branch.exp_skp);
 			parse_skp.alts.push(new State(state.prev, state.offset, branch.exp_skp, S.CHR, 'exp_skp'));
