@@ -239,13 +239,6 @@ State.prototype.push = function push(offset, branch, mode, data){
 	return new State(this, offset, branch, mode, data);
 }
 
-function withChange(bindings, name, value){
-	var nb = {};
-	for(var n in bindings) nb[n]=bindings[n];
-	nb[name] = value;
-	return nb;
-}
-
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
 // Process:
 // Let parse_backtrack be a queue of sets of branches
