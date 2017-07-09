@@ -170,6 +170,8 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				node = node.exp_set[varspec.range];
 				node.exp_range = varspec.range;
 				node.exp_info = {type:'EXP', index:varspec.index};
+				node.next = node.next || new Node;
+				node = node.next;
 				if(varspec.explode){
 					// The optional stuff
 					// Second expression prefix
@@ -183,6 +185,8 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					node = node.exp_set[varspec.range];
 					node.exp_range = varspec.range;
 					node.exp_info = {type:'EXP', index:varspec.index};
+					node.next = node.next || new Node;
+					node = node.next;
 				}
 				setNext.forEach(function(n){
 					if(n.exp_skp && n.exp_skp!==node){
@@ -274,7 +278,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			if(chr in validRange){
 				log(' +parse_exp', parse_exp.offset, branch.nid, branch.exp_range);
 				parse_exp.alts.push(state.push(offset, branch, S.CHR, 'exp_range'));
-				return;
+				//return;
 			}
 		}
 		if(branch.exp_skp){
@@ -290,6 +294,11 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 				state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
 			]));
 		}
+		if(branch.next){
+			log(' next', branch.next.nid);
+			consumeInputCharacter(offset, chr, state, branch.next);
+		}
+
 	}
 	for(var offset = 0;;){
 		var stateset_this = parse_backtrack.pop();
