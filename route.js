@@ -35,7 +35,7 @@ function Node(nid){
 	// Literal characters to match
 	this.chr = {};
 	// Expression prefixes to match
-	this.exp_chr = {};
+	this.exp_pfx = {};
 	// Alternative sets to try matching at the same time
 	this.exp_set = {};
 	// Decend into this for more alternatives
@@ -164,8 +164,8 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					setNext.push(node);
 				}
 				if(varspec.prefix){
-					node.exp_chr[varspec.prefix] = node.exp_chr[varspec.prefix] || new Node(nid());
-					node = node.exp_chr[varspec.prefix];
+					node.exp_pfx[varspec.prefix] = node.exp_pfx[varspec.prefix] || new Node(nid());
+					node = node.exp_pfx[varspec.prefix];
 					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
 				node.exp_set = node.exp_set || {};
@@ -177,8 +177,8 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 					// The optional stuff
 					// Second expression prefix
 					setNext.push(node);
-					node.exp_chr[varspec.prefixNext] = node.exp_chr[varspec.prefixNext] || new Node(nid());
-					node = node.exp_chr[varspec.prefixNext];
+					node.exp_pfx[varspec.prefixNext] = node.exp_pfx[varspec.prefixNext] || new Node(nid());
+					node = node.exp_pfx[varspec.prefixNext];
 					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 					// Second expression body
 					node.exp_set = node.exp_set || {};
@@ -261,10 +261,10 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			log(' +parse_chr', chr);
 			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
 		}
-		// If the exp_chr isn't matched, then skip over the following exp_range too...
-		if(branch.exp_chr[chr]){
-			log(' +parse_pfx', branch.exp_chr[chr].nid, chr);
-			parse_pfx.alts.push(state.push(offset, branch.exp_chr[chr], S.CHR, 'exp_chr'));
+		// If the exp_pfx isn't matched, then skip over the following exp_range too...
+		if(branch.exp_pfx[chr]){
+			log(' +parse_pfx', branch.exp_pfx[chr].nid, chr);
+			parse_pfx.alts.push(state.push(offset, branch.exp_pfx[chr], S.CHR, 'exp_pfx'));
 		}
 		for(var rangeName in branch.exp_set){
 			var validRange = RANGES_MAP[rangeName];
@@ -337,7 +337,8 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var route = solution.branch.end;
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			//dir(item.branch);
+			log(item.offset);
+			dir(item, {depth:2});
 			var data = item.branch.exp_info;
 			history.unshift({chr:uri[item.offset], offset:item.offset, vindex:data&&data.index, vpush:data&&data.push});
 		}
