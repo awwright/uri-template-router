@@ -1,14 +1,14 @@
 
-function us(v){
-	var s = '' + (v[0]*1e9 + v[1]);
-	if(s.length > 9) return s;
-	return ('         ' + s).substr(-9) + 'us';
-}
-var padlen = 5;
-function pus(n, start){
-	var pad = n;
-	while(pad.length<padlen) pad+=' ';
-	console.log( pad + ' ' + us(process.hrtime(start)) );
+var padlen = 7;
+var ratelen = 9;
+function pus(name, start, cyc){
+	var end = process.hrtime(start);
+	var rate = (cyc / (end[0] + end[1]*1e-9)).toFixed(0) + 'Hz';
+	var pad = name;
+	while(pad.length<padlen) pad += ' ';
+	var rate = ' ' + rate;
+	while(rate.length<ratelen) rate = ' ' + rate;
+	console.log( pad + ' ' + rate );
 }
 
 function compareJSONParsedObject(a, b){
@@ -32,11 +32,11 @@ var testRouters = {
 };
 padlen = Math.max.apply(null, Object.keys(testRouters).map(function(v){ return v.length; }));
 
-var testData = require('./t/data.json');
-var cycles = 100000;
+var testData = require('./t/base.json');
+var cycles = 10000;
 
 testData.forEach(function(testPage, pg){
-	console.log('\nTesting page '+pg);
+	console.log('\nTesting page '+pg+': '+testPage.label);
 	for(var rn in testRouters){
 		var Router = testRouters[rn];
 		var router = new Router;
@@ -51,7 +51,7 @@ testData.forEach(function(testPage, pg){
 				var route = router.resolveURI(uri);
 			}
 		}
-		pus(rn, start);
+		pus(rn, start, cycles*uris.length);
 		Object.keys(testPage.uris).forEach(function(uri){
 		});
 	}

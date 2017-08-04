@@ -62,7 +62,7 @@
 		}
 	},
 	{
-		"label": "path with explode modifier",
+		"label": "path with explode modifier (ideal match)",
 		"templates": [
 			"http://a.local{/path*}"
 		],
@@ -76,7 +76,15 @@
 			"http://a.local/a/b/c": { "path": [ "a", "b", "c" ] },
 			"http://a.local/a/b/c/": { "path": [ "a", "b", "c", "" ] },
 			"http://a.local/a/b/c/d/e": { "path": [ "a", "b", "c", "d", "e" ] },
-			"http://a.local/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] },
+			"http://a.local/a/b/c/d/e/": { "path": [ "a", "b", "c", "d", "e", "" ] }
+		}
+	},
+	{
+		"label": "path with explode modifier (no match)",
+		"templates": [
+			"http://a.local{/path*}"
+		],
+		"uris": {
 			"http://a.local!": null,
 			"http://a.local/!": null,
 			"http://a.local/a!": null,
@@ -112,6 +120,7 @@
 		}
 	},
 	{
+		"label": "blog example 1",
 		"templates": [
 			"http://example.com/",
 			"http://example.com/root{/base}{/a*}",
@@ -124,6 +133,7 @@
 		}
 	},
 	{
+		"label": "blog example 2",
 		"templates": [
 			"http://example.com/",
 			"http://example.com/root{/base}{/a*}",
