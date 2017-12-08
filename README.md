@@ -33,7 +33,7 @@ r.resolveURI('http://example.com/qfoo.txt'); // returns:
 
 r.resolveURI('http://example.com/q123.html'); // returns:
 {
-  pattern: 'http://example.com/q{n}.txt',
+  pattern: 'http://example.com/q{n}.html',
   name: 'page_html',
   data: { n: '123' },
 }
