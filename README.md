@@ -17,7 +17,7 @@ r.addTemplate('http://example.com/', {}, 'index');
 r.addTemplate('http://example.com/q{n}.html', {}, 'page_html');
 r.addTemplate('http://example.com/q{n}.txt', {}, 'page_txt');
 r.addTemplate('http://example.com/blog{/y,m,d,slug}', {}, 'blog_post');
-r.addTemplate('http://example.com/{path*}', {}, 'path');
+r.addTemplate('http://example.com{/path*}', {}, 'path');
 
 r.resolveURI('http://example.com/'); // returns:
 {
