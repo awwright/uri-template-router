@@ -3,7 +3,13 @@
 
 Match a URI to a URI template from a set of templates.
 
-## Usage
+* Specify a list of templates to test against using `{braces}` to specify variables
+* Returns the best match, regardless of insertion order
+* Scales to any number of templates/patterns to test against
+
+## Example
+
+
 
 ```javascript
 var r = new Router;
