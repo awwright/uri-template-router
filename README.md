@@ -9,14 +9,12 @@ Match a URI to a URI template from a set of templates.
 
 ## Example
 
-
-
 ```javascript
 var r = new Router;
 
 r.addTemplate('http://example.com/', {}, 'index');
-r.addTemplate('http://example.com/q{n}', {}, 'q_page');
-r.addTemplate('http://example.com/root{/base}{/a*}{?b*}{#c}', {}, 'complex_type');
+r.addTemplate('http://example.com/q{n}.html', {}, 'page_html');
+r.addTemplate('http://example.com/q{n}.txt', {}, 'page_txt');
 r.addTemplate('http://example.com/blog{/y,m,d,slug}', {}, 'blog_post');
 
 r.resolveURI('http://example.com/'); // returns:
@@ -26,22 +24,18 @@ r.resolveURI('http://example.com/'); // returns:
   data: undefined,
 }
 
-r.resolveURI('http://example.com/qfoo'); // returns:
+r.resolveURI('http://example.com/qfoo.txt'); // returns:
 {
-  pattern: 'http://example.com/q{n}',
-  name: 'q_page',
+  pattern: 'http://example.com/q{n}.txt',
+  name: 'page_txt',
   data: { n: 'foo' },
 }
 
-r.resolveURI('http://example.com/root/q/1/2/3?key1=one&key2=2'); // returns:
+r.resolveURI('http://example.com/q123.html'); // returns:
 {
-  pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
-  name: 'complex_type',
-  data: {
-     base: 'q',
-     a: [ '1', '2', '3' ],
-     b: [ 'key1=one', 'key2=2' ],
-  },
+  pattern: 'http://example.com/q{n}.txt',
+  name: 'page_html',
+  data: { n: '123' },
 }
 
 r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // returns:
@@ -51,6 +45,26 @@ r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // retur
   data: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
 }
 ```
+
+
+## API
+
+### new module.Router()
+
+Create an instance of Router.
+
+### Router#addTemplate(pattern, options, name)
+
+Add a template to the set of templates. Mutates the instance.
+
+### Router#resolveURI(uri, options)
+
+Match a given URI against the set of templates and return the best match as a Result object with the following properties:
+
+* pattern: the pattern that was matched
+* name: the value of the third argument provided to addTemplate
+* data: matched values for each of the variables, if any
+
 
 ## URI Template Format
 
