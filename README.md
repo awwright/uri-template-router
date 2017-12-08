@@ -6,6 +6,7 @@ Match a URI to a URI template from a set of templates.
 * Specify a list of templates to test against using `{braces}` to specify variables
 * Returns the best match, regardless of insertion order
 * Scales to any number of templates/patterns to test against
+* Supports repeating expressions using explode modifier
 
 ## Example
 
@@ -16,6 +17,7 @@ r.addTemplate('http://example.com/', {}, 'index');
 r.addTemplate('http://example.com/q{n}.html', {}, 'page_html');
 r.addTemplate('http://example.com/q{n}.txt', {}, 'page_txt');
 r.addTemplate('http://example.com/blog{/y,m,d,slug}', {}, 'blog_post');
+r.addTemplate('http://example.com/{path*}', {}, 'path');
 
 r.resolveURI('http://example.com/'); // returns:
 {
@@ -43,6 +45,13 @@ r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // retur
   pattern: 'http://example.com/blog{/y,m,d,slug}',
   name: 'blog_post',
   data: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
+}
+
+r.resolveURI('http://example.com/first/second/third/'); // returns:
+{
+  pattern: 'http://example.com/blog{/y,m,d,slug}',
+  name: 'blog_post',
+  data: { path: [ 'first', 'second', 'third', '' ] },
 }
 ```
 
