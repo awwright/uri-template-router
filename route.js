@@ -59,7 +59,7 @@ function Route(template, variables, name){
 function Result(template, name, data){
 	this.template = template;
 	this.name = name;
-	this.data = bindings;
+	this.data = data;
 }
 
 var RANGES = {
