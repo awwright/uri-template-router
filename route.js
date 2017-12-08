@@ -1,11 +1,12 @@
 
 module.exports.Router = Router;
 
+var routeDebug = process.argv && process.argv.indexOf('-v')>=0;
 function log(){
-	if(process.argv && process.argv.indexOf('-v')>=0) console.log.apply(console, arguments);
+	if(routeDebug) console.log.apply(console, arguments);
 }
 function dir(){
-	if(process.argv && process.argv.indexOf('-v')>=0) console.dir.apply(console, arguments);
+	if(routeDebug) console.dir.apply(console, arguments);
 }
 
 function Router(){
@@ -18,6 +19,9 @@ function nid(){
 }
 nid.i = 0;
 
+// A node on the tree is a list of various options to try to match against an input character.
+// The "next" and "exp_set" and "exp_skip" options specify another branch to also try and match against the current input character.
+// The "end" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
 function Node(){
 	this.nid = nid();
 	this.chr_offset = null;
@@ -28,7 +32,6 @@ function Node(){
 	this.exp_range = null;
 	this.exp_repeat = null;
 	this.exp_repeat_nid = null;
-	this.exp_info = undefined;
 	// If we reach this branch, declare a match for this template
 	this.end = null;
 
@@ -162,49 +165,33 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 				}
 				if(varspec.prefix){
 					node.exp_pfx[varspec.prefix] = node.exp_pfx[varspec.prefix] || new Node;
+					node.exp_pfx_vpush = varspec.explode?varspec.index:undefined;
 					node = node.exp_pfx[varspec.prefix];
-					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
 				}
 				node.exp_set = node.exp_set || {};
 				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
 				node = node.exp_set[varspec.range];
 				node.exp_range = varspec.range;
-				node.exp_info = {type:'EXP', index:varspec.index};
+				node.exp_range_vindex = varspec.index;
 				node.next = node.next || new Node;
 				node = node.next;
-				node.exp_info = {type:'EXP', index:varspec.index};
 				if(varspec.explode){
 					// The optional stuff
-					// Second expression prefix
-					setNext.push(node);
-					node.exp_pfx[varspec.prefixNext] = node.exp_pfx[varspec.prefixNext] || new Node;
-					node = node.exp_pfx[varspec.prefixNext];
-					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
-					// Second expression body
-					node.exp_set = node.exp_set || {};
-					node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
-					node = node.exp_set[varspec.range];
-					node.exp_range = varspec.range;
-					node.exp_info = {type:'EXP', index:varspec.index};
-					node.next = node.next || new Node;
-					node = node.next;
-					node.exp_info = {type:'EXP', index:varspec.index};
-
 					for(var e_i=0; e_i<6; e_i++){
-					// 3rd expression prefix
+					var nodeStart = node;
+					// nth expression prefix
 					setNext.push(node);
 					node.exp_pfx[varspec.prefixNext] = node.exp_pfx[varspec.prefixNext] || new Node;
+					node.exp_pfx_vpush = varspec.explode?varspec.index:undefined;
 					node = node.exp_pfx[varspec.prefixNext];
-					node.exp_info = {type:'PFX', push:varspec.explode?varspec.index:undefined};
-					// 3rd expression body
+					// nth expression body
 					node.exp_set = node.exp_set || {};
 					node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
 					node = node.exp_set[varspec.range];
 					node.exp_range = varspec.range;
-					node.exp_info = {type:'EXP', index:varspec.index};
+					node.exp_range_vindex = varspec.index;
 					node.next = node.next || new Node;
-					node = node.next;
-					node.exp_info = {type:'EXP', index:varspec.index};
+					//node.next = nodeStart;
 					}
 				}
 				setNext.forEach(function(n){
@@ -245,18 +232,25 @@ function StateSet(offset, tier, alternatives){
 	// A list of equal alternative candidates for processing this input character
 	this.alts = alternatives;
 }
+StateSet.prototype.pushAlt = function pushAlt(alt){
+	if(alt.offset!==this.offset) throw new Error('Incorrect offset, expected '+this.offset+' got '+alt.offset);
+	this.alts.push(alt);
+}
 
-function State(prev, offset, branch, mode, data){
+function State(prev, offset, branch, mode, type, vpush, vindex){
 	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
+	if(prev && (offset !== prev.offset+1)) throw new Error('out-of-order state history, expected '+(prev.offset+1)+' got '+offset);
 	if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 	this.prev = prev;
 	this.offset = offset;
 	this.branch = branch;
 	this.mode = mode;
-	this.data = data;
+	this.type = type;
+	this.vpush = vpush;
+	this.vindex = vindex;
 }
-State.prototype.push = function push(offset, branch, mode, data){
-	return new State(this, offset, branch, mode, data);
+State.prototype.push = function push(offset, branch, mode, type, vpush, vindex){
+	return new State(this, offset, branch, mode, type, vpush, vindex);
 }
 
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
@@ -279,12 +273,12 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		var mode = state.mode;
 		if(branch.chr[chr]){
 			log(' +parse_chr', parse_chr.offset, branch.chr[chr].nid);
-			parse_chr.alts.push(state.push(offset, branch.chr[chr], S.CHR, 'chr'));
+			parse_chr.pushAlt(state.push(offset+1, branch.chr[chr], S.CHR, 'chr'));
 		}
 		// If the exp_pfx isn't matched, then skip over the following exp_range too...
 		if(branch.exp_pfx[chr]){
-			log(' +parse_pfx', parse_pfx.offset, branch.exp_pfx[chr].nid);
-			parse_pfx.alts.push(state.push(offset, branch.exp_pfx[chr], S.CHR, 'exp_pfx'));
+			log(' +parse_pfx', parse_pfx.offset+1, branch.exp_pfx[chr].nid);
+			parse_pfx.pushAlt(state.push(offset+1, branch.exp_pfx[chr], S.CHR, 'exp_pfx', branch.exp_pfx_vpush, undefined));
 		}
 		for(var rangeName in branch.exp_set){
 			var validRange = RANGES_MAP[rangeName];
@@ -296,7 +290,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			var validRange = RANGES_MAP[branch.exp_range];
 			if(chr in validRange){
 				log(' +parse_exp', parse_exp.offset, branch.nid, branch.exp_range);
-				parse_exp.alts.push(state.push(offset, branch, S.CHR, 'exp_range'));
+				parse_exp.pushAlt(state.push(offset+1, branch, S.CHR, 'exp_range', undefined, branch.exp_range_vindex));
 				//return;
 			}
 		}
@@ -304,7 +298,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			log(' +parse_skp', parse_skp.offset, branch.exp_skp.nid);
 			// If this expression does not match the current character, advance to the next input pattern that might
 			//consumeInputCharacter(offset, chr, state, branch.exp_skp);
-			parse_skp.alts.push(new State(state, state.offset+1, branch.exp_skp, S.CHR, 'exp_skp'));
+			parse_skp.pushAlt(new State(state.prev, state.offset, branch.exp_skp, S.CHR, 'exp_skp', state.vpush, state.vindex));
 		}
 		if(branch.exp_repeat){
 			log(' +parse_backtrack', branch.exp_repeat.nid);
@@ -335,7 +329,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		log('Parse('+offset+')', chr);
 		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
 			var alt = stateset_this.alts[alt_i];
-			log(' branch'+alt_i, alt.branch.nid, matchedExpressions(alt));
+			if(routeDebug) log(' branch'+alt_i, alt.branch.nid, matchedExpressions(alt));
 			consumeInputCharacter(offset, chr, alt, alt.branch);
 		}
 		if(parse_skp.alts.length) parse_backtrack.push(parse_skp); // Lowest priority
@@ -362,14 +356,15 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 			//dir(item, {depth:2});
 			var branch = item.branch;
 			history.unshift({
-				chr: uri[item.offset],
-				offset: branch.exp_info && branch.exp_info.offset,
-				vindex: branch.exp_info && branch.exp_info.index,
-				vpush: branch.exp_info && branch.exp_info.push,
+				chr: uri[item.prev.offset],
+				offset: item.prev.offset,
+				type: item.type,
+				vindex: item.vindex,
+				vpush: item.vpush,
 				nid: branch.nid,
 			});
 		}
-		//dir(history);
+		dir(history);
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
