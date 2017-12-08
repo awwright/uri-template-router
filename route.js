@@ -50,15 +50,15 @@ Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
 }
 
-function Route(template, variables, arg){
+function Route(template, variables, name){
 	this.template = template;
 	this.variables = variables;
-	this.argument = arg;
+	this.name = name;
 }
 
-function Result(template, arg, bindings){
+function Result(template, name, data){
 	this.template = template;
-	this.argument = arg;
+	this.name = name;
 	this.data = bindings;
 }
 
@@ -391,6 +391,6 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		route.variables.forEach(function(v){
 			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
 		});
-		return new Result(route.template, route.arg, bindings);
+		return new Result(route.template, route.name, bindings);
 	}
 }

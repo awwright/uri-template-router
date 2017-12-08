@@ -23,21 +23,21 @@ r.resolveURI('http://example.com/'); // returns:
 {
   pattern: 'http://example.com/',
   arg: 'index',
-  bindings: undefined,
+  data: undefined,
 }
 
 r.resolveURI('http://example.com/qfoo'); // returns:
 {
   pattern: 'http://example.com/q{n}',
   arg: 'q_page',
-  bindings: { n: 'foo' },
+  data: { n: 'foo' },
 }
 
 r.resolveURI('http://example.com/root/q/1/2/3?key1=one&key2=2'); // returns:
 {
   pattern: 'http://example.com/root{/base}{/a*}{?b*}{#c}',
   arg: 'complex_type',
-  bindings: {
+  data: {
      base: 'q',
      a: [ '1', '2', '3' ],
      b: [ 'key1=one', 'key2=2' ],
@@ -48,7 +48,7 @@ r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // retur
 {
   pattern: 'http://example.com/blog{/y,m,d,slug}',
   arg: 'blog_post',
-  bindings: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
+  data: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
 }
 ```
 
