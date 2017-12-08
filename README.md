@@ -49,8 +49,8 @@ r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // retur
 
 r.resolveURI('http://example.com/first/second/third/'); // returns:
 {
-  pattern: 'http://example.com/blog{/y,m,d,slug}',
-  name: 'blog_post',
+  pattern: 'http://example.com{/path*}',
+  name: 'path',
   data: { path: [ 'first', 'second', 'third', '' ] },
 }
 ```
