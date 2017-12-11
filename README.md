@@ -7,6 +7,8 @@ Match a URI to a URI template from a set of templates.
 * Returns the best match, regardless of insertion order
 * Scales to any number of templates/patterns to test against
 * Supports repeating expressions using explode modifier
+* Routes store an associated "name" argument for storing arbritrary values (including objects or functions)
+* State machine evaluation can be resumed if the returned match isn't good (e.g. if first match wasn't in the database)
 
 ## Example
 
