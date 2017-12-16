@@ -3,7 +3,7 @@ var util = require('util');
 //util.inspect.defaultOptions.depth = 40;
 //util.inspect.defaultOptions.colors = true;
 
-var file = './route.js';
+var file = './index.js';
 console.log(file);
 var Router = require(file).Router;
 var r = new Router;

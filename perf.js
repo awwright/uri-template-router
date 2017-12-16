@@ -24,7 +24,7 @@ function compareJSONParsedObject(a, b){
 }
 
 var testRouters = {
-	control: require('./route.js').Router,
+	control: require('./index.js').Router,
 //	range: require('./route-range.js').Router,
 //	range2: require('./route-range2.js').Router,
 //	range3: require('./route-range3.js').Router,
