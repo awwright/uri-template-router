@@ -1,4 +1,6 @@
 
+"use strict";
+
 module.exports.Router = Router;
 
 var routeDebug = process.argv && process.argv.indexOf('-v')>=0;
@@ -50,17 +52,103 @@ Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
 }
 
-function Route(template, variables, name){
+module.exports.Route = Route;
+function Route(template, options, name){
 	this.template = template;
-	this.variables = variables;
+	if(variables===undefined) variables = [];
+	else if(!Array.isArray(variables)) throw new Error('Expected arguments[1] to be an array');
+	this.options = options;
 	this.name = name;
+
+	// Parse the URI template
+	var varnames = {};
+	var variables = this.variables = [];
+	var tokens = this.tokens = [];
+	for(var uri_i=0; uri_i<=template.length; uri_i++){
+		var chr = template[uri_i];
+		if(chr=='{'){
+			var endpos = template.indexOf('}', uri_i+2);
+			if(endpos<0) throw new Error('Unclosed expression: Expected "}" but found end of template');
+			var patternBody = template.substring(uri_i+1, endpos);
+			uri_i = endpos;
+			// If the first character is part of a valid variable name, assume the default modifier
+			// Else, assume the first character is a modifier
+			var modifierChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
+			var modifier = Router.modifiers[modifierChar];
+			if(!modifier){
+				throw new Error('Unknown expression operator: '+JSON.stringify(modifier));
+			}
+			var prefix = modifier.prefix;
+			var prefixNext = modifier.prefixNext;
+			patternBody
+			.substring(modifierChar.length)
+			.split(/,/g)
+			.map(function(varspec, index){
+				if(varspec.match(/\*$/)){
+					if(!prefixNext){
+						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
+					}
+					var varname = varspec.substring(0, varspec.length-1);
+					var explode = true;
+				}else{
+					var varname = varspec;
+					var explode = false;
+				}
+				return {
+					varname: varname,
+					prefix: index ? prefixNext : prefix,
+					prefixNext: prefixNext,
+					range: modifier.range,
+					explode: explode,
+					optional: true,
+				};
+			})
+			.forEach(function(varspec, index){
+				if(varnames[varspec.varname]){
+					throw new Error('Variable '+JSON.stringify(varspec.varname)+' is already used');
+				}
+				var expressionInfo = {};
+				varspec.index = Object.keys(varnames).length;
+				varnames[varspec.varname] = varspec;
+				variables[varspec.index] = varspec;
+				var range = varspec.range + (varspec.explode?'*':'');
+
+				tokens.push(varspec);
+			});
+		}else{
+			// Decend node into the branch, creating it if it doesn't exist
+			// if chr is undefined, this will set the key "undefined"
+			tokens.push(chr);
+		}
+	}
+}
+Route.prototype.gen = function Route_gen(data){
+	var out = "";
+	this.tokens.forEach(function(t){
+		if(typeof t=='string') out += t;
+		else if(typeof t=='object'){
+			if(typeof data[t.varname]=='string'){
+				out += t.prefix;
+				out += data[t.varname];
+			}
+			if(Array.isArray(data[t.varname]) && data[t.varname].length>0){
+				out += t.prefix;
+				out += data[t.varname].join(t.prefixNext);
+			}
+		}
+	});
+	return out;
 }
 
-function Result(template, name, data){
-	this.template = template;
-	this.name = name;
+function Result(router, uri, route, data){
+	this.router = router;
+	this.uri = uri;
+	this.route = route;
+	this.template = route.template;
+	this.name = route.name;
 	this.data = data;
 }
+
 
 var RANGES = {
 	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
@@ -105,11 +193,20 @@ Router.modifiers = {
 	'&': new Modifier('&', '&', 'UNRESERVED'),
 };
 
-Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
+Router.prototype.addTemplate = function addTemplate(uri, options, name){
+	if(typeof uri=='object' && variables===undefined && name===undefined){
+		route = uri;
+		uri = route.template;
+		variables = route.variables;
+		name = route.name;
+	}else{
+		var route = new Route(uri, variables, name);
+	}
 	var node = this.tree;
 	this.routes.push(uri);
 	var varnames = {};
 	var variables = [];
+	var tokens = [];
 	for(var uri_i=0; uri_i<=uri.length; uri_i++){
 		var chr = uri[uri_i];
 		if(chr=='{'){
@@ -213,7 +310,8 @@ Router.prototype.addTemplate = function addTemplate(uri, variables, arg){
 	if(node.end){
 		throw new Error('Route already defined');
 	}
-	node.end = new Route(uri, variables, arg);
+	node.end = route;
+	return route;
 }
 
 var S = {
@@ -265,6 +363,7 @@ State.prototype.push = function push(offset, branch, mode, type, vpush, vindex){
 //   If parse_next is empty, set it to the next item popped off of parse_backtrack
 
 Router.prototype.resolveURI = function resolve(uri, flags){
+	var self = this;
 	var parse_backtrack = [
 		new StateSet(0, 0, [new State(null, 0, this.tree, S.CHR, null)]),
 	];
@@ -391,6 +490,6 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		route.variables.forEach(function(v){
 			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
 		});
-		return new Result(route.template, route.name, bindings);
+		return new Result(self, uri, route, bindings);
 	}
 }
