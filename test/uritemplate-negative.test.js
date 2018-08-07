@@ -4,9 +4,7 @@ var assert = require('assert');
 var R = require('..');
 
 var files = [
-	'spec-examples.json',
-	'spec-examples-by-section.json',
-	'extended-tests.json',
+	'negative-tests.json',
 ];
 
 files.forEach(function(filename){
@@ -18,12 +16,9 @@ files.forEach(function(filename){
 			describe(sectionName, function(){
 				section.testcases.forEach(function(test){
 					it(test[0], function(){
-						var uri = new R.Route(test[0]).gen(section.variables);
-						if(Array.isArray(test[1])){
-							assert(test[1].indexOf(uri) >= 0);
-						}else{
-							assert.equal(uri, test[1]);
-						}
+						assert.throws(function(){
+							var uri = new R.Route(test[0]).gen(section.variables);
+						});
 					});
 				});
 			});
