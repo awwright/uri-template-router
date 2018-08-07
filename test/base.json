@@ -110,6 +110,7 @@
 		}
 	},
 	{
+		"label": "path",
 		"templates": [
 			"http://c.local{/path*}"
 		],

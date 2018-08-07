@@ -1,0 +1,29 @@
+{
+  "name": "uri-template-router",
+  "description": "Match a URI to a pattern in a collection of URI Templates",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/awwright/uri-template-router.git"
+  },
+  "keywords": [
+    "URI",
+    "URL",
+    "IRI",
+    "router",
+    "URI Template"
+  ],
+  "author": "Austin Wright",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/awwright/uri-template-router/issues"
+  },
+  "homepage": "https://github.com/awwright/uri-template-router#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "^5.2.0"
+  }
+}
