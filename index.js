@@ -64,7 +64,7 @@ function Route(template, options, name){
 	var varnames = {};
 	var variables = this.variables = [];
 	var tokens = this.tokens = [];
-	for(var uri_i=0; uri_i<=template.length; uri_i++){
+	for(var uri_i=0; uri_i<template.length; uri_i++){
 		var chr = template[uri_i];
 		if(chr=='{'){
 			var endpos = template.indexOf('}', uri_i+2);
@@ -94,13 +94,18 @@ function Route(template, options, name){
 					var varname = varspec;
 					var explode = false;
 				}
+				if(varname.indexOf(':')>=0){
+					var [varname, len] = varname.split(':');
+				}
 				return {
 					varname: varname,
+					modifier: modifierChar,
 					prefix: index ? prefixNext : prefix,
 					prefixNext: prefixNext,
 					range: modifier.range,
 					explode: explode,
 					optional: true,
+					length: len || null,
 				};
 			})
 			.forEach(function(varspec, index){
@@ -118,22 +123,37 @@ function Route(template, options, name){
 		}else{
 			// Decend node into the branch, creating it if it doesn't exist
 			// if chr is undefined, this will set the key "undefined"
-			tokens.push(chr);
+			if(typeof tokens[tokens.length-1]=='string') tokens[tokens.length-1] += chr;
+			else tokens.push(chr);
 		}
 	}
 }
 Route.prototype.gen = function Route_gen(data){
 	var out = "";
+	function encodeURIComponent_v(v){
+		return encodeURIComponent(v).replace(/!/g, '%21');
+	}
 	this.tokens.forEach(function(t){
 		if(typeof t=='string') out += t;
 		else if(typeof t=='object'){
-			if(typeof data[t.varname]=='string'){
-				out += t.prefix;
-				out += data[t.varname];
-			}
-			if(Array.isArray(data[t.varname]) && data[t.varname].length>0){
-				out += t.prefix;
-				out += data[t.varname].join(t.prefixNext);
+			var encode = (t.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
+			if(typeof data[t.varname]=='string' || typeof data[t.varname]=='number'){
+				out += t.prefix || '';
+				var value = data[t.varname];
+				if(t.length) value = value.substring(0, t.length);
+				out += encode(value);
+			}else if(Array.isArray(data[t.varname]) && data[t.varname].length>0){
+				out += t.prefix || '';
+				if(t.explode){
+					out += data[t.varname].map(function(value){
+						if(t.length) value = value.substring(0, t.length);
+						return encode(value);
+					}).join(t.prefixNext);
+				}else{
+					var value = data[t.varname];
+					if(t.length) value = value.substring(0, t.length);
+					out += encode(value.join(','));
+				}
 			}
 		}
 	});
@@ -183,8 +203,8 @@ function Modifier(prefix, prefixNext, range){
 }
 
 Router.modifiers = {
-	'': new Modifier('', null, 'UNRESERVED'),
-	'+': new Modifier('', null, 'RESERVED_UNRESERVED'),
+	'': new Modifier('', ',', 'UNRESERVED'),
+	'+': new Modifier('', ',', 'RESERVED_UNRESERVED'),
 	'#': new Modifier('#', null, 'RESERVED_UNRESERVED'),
 	'.': new Modifier('.', null, 'UNRESERVED'),
 	'/': new Modifier('/', '/', 'UNRESERVED'),
@@ -237,6 +257,9 @@ Router.prototype.addTemplate = function addTemplate(uri, options, name){
 					var varname = varspec;
 					var explode = false;
 				}
+				if(varname.indexOf(':')>=0){
+					var [varname, len] = varname.split(':');
+				}
 				return {
 					varname: varname,
 					prefix: index ? prefixNext : prefix,
@@ -244,6 +267,7 @@ Router.prototype.addTemplate = function addTemplate(uri, options, name){
 					range: modifier.range,
 					explode: explode,
 					optional: true,
+					length: len || null,
 				};
 			})
 			.forEach(function(varspec, index){
