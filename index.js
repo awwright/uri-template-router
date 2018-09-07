@@ -223,7 +223,7 @@ Router.prototype.addTemplate = function addTemplate(uri, options, name){
 		var route = new Route(uri, variables, name);
 	}
 	var node = this.tree;
-	this.routes.push(uri);
+	this.routes.push(route);
 	var varnames = {};
 	var variables = [];
 	var tokens = [];
