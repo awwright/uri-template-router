@@ -17,36 +17,36 @@ function Router(){
 }
 
 function nid(){
-	return 'nId'+(++nid.i);
+	return 'N'+(nid.i++);
 }
 nid.i = 0;
 
 // A node on the tree is a list of various options to try to match against an input character.
-// The "next" and "exp_set" and "exp_skip" options specify another branch to also try and match against the current input character.
-// The "end" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
+// The "next" and "list_set" options specify another branch to also try and match against the current input character.
+// The "template_match" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
 function Node(){
 	this.nid = nid();
 	this.chr_offset = null;
 	// Automatically matches the given template
 	// Expressions to decend into
-	this.exp_match = [];
+	this.list_set = [];
 	// If we're currently in an expression
-	this.exp_range = null;
-	this.exp_repeat = null;
-	this.exp_repeat_nid = null;
+	this.match_range = null;
+	this.list_repeat = null;
+	this.list_repeat_nid = null;
 	// If we reach this branch, declare a match for this template
-	this.end = null;
+	this.template_match = null;
 
 	// Literal characters to match
-	this.chr = {};
+	this.match_chr = {};
 	// Expression prefixes to match
-	this.exp_pfx = {};
+	this.match_pfx = {};
 	// Alternative sets to try matching at the same time
-	this.exp_set = {};
+	this.list_set = {};
 	// Decend into this for more alternatives
-	this.next = null;
-	this.exp_skp = null;
-	this.exp_skp_nid = null;
+	this.list_next = null;
+	this.list_skp = null;
+	this.list_skp_nid = null;
 }
 Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
@@ -61,7 +61,7 @@ function Route(template, options, name){
 	this.name = name;
 
 	// Parse the URI template
-	var varnames = {};
+	var varnames = this.varnames = {};
 	var variables = this.variables = [];
 	var tokens = this.tokens = [];
 	for(var uri_i=0; uri_i<template.length; uri_i++){
@@ -84,6 +84,7 @@ function Route(template, options, name){
 			.substring(modifierChar.length)
 			.split(/,/g)
 			.map(function(varspec, index){
+				// Test for explode modifier
 				if(varspec.match(/\*$/)){
 					if(!prefixNext){
 						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
@@ -94,6 +95,7 @@ function Route(template, options, name){
 					var varname = varspec;
 					var explode = false;
 				}
+				// Test for substring modifier
 				if(varname.indexOf(':')>=0){
 					var [varname, len] = varname.split(':');
 				}
@@ -214,127 +216,88 @@ Router.modifiers = {
 };
 
 Router.prototype.addTemplate = function addTemplate(uri, options, name){
-	if(typeof uri=='object' && variables===undefined && name===undefined){
+	if(typeof uri=='object' && options===undefined && name===undefined){
 		route = uri;
 		uri = route.template;
-		variables = route.variables;
+		variables = route.options;
 		name = route.name;
 	}else{
-		var route = new Route(uri, variables, name);
+		var route = new Route(uri, options, name);
 	}
-	var node = this.tree;
 	this.routes.push(route);
-	var varnames = {};
-	var variables = [];
-	var tokens = [];
-	for(var uri_i=0; uri_i<=uri.length; uri_i++){
-		var chr = uri[uri_i];
-		if(chr=='{'){
-			var endpos = uri.indexOf('}', uri_i+2);
-			if(endpos<0) throw new Error('Unclosed expression: Expected "}" but found end of template');
-			var patternBody = uri.substring(uri_i+1, endpos);
-			uri_i = endpos;
-			// If the first character is part of a valid variable name, assume the default modifier
-			// Else, assume the first character is a modifier
-			var modifierChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
-			var modifier = Router.modifiers[modifierChar];
-			if(!modifier){
-				throw new Error('Unknown expression operator: '+JSON.stringify(modifier));
-			}
-			var prefix = modifier.prefix;
-			var prefixNext = modifier.prefixNext;
-			patternBody
-			.substring(modifierChar.length)
-			.split(/,/g)
-			.map(function(varspec, index){
-				if(varspec.match(/\*$/)){
-					if(!prefixNext){
-						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
-					}
-					var varname = varspec.substring(0, varspec.length-1);
-					var explode = true;
-				}else{
-					var varname = varspec;
-					var explode = false;
-				}
-				if(varname.indexOf(':')>=0){
-					var [varname, len] = varname.split(':');
-				}
-				return {
-					varname: varname,
-					prefix: index ? prefixNext : prefix,
-					prefixNext: prefixNext,
-					range: modifier.range,
-					explode: explode,
-					optional: true,
-					length: len || null,
-				};
-			})
-			.forEach(function(varspec, index){
-				if(varnames[varspec.varname]){
-					throw new Error('Variable '+JSON.stringify(varspec.varname)+' is already used');
-				}
-				var expressionInfo = {};
-				varspec.index = Object.keys(varnames).length;
-				varnames[varspec.varname] = varspec;
-				variables[varspec.index] = varspec;
-				var range = varspec.range + (varspec.explode?'*':'');
 
-				var setNext = [];
-				if(varspec.optional){
-					setNext.push(node);
-				}
-				if(varspec.prefix){
-					node.exp_pfx[varspec.prefix] = node.exp_pfx[varspec.prefix] || new Node;
-					node.exp_pfx_vpush = varspec.explode?varspec.index:undefined;
-					node = node.exp_pfx[varspec.prefix];
-				}
-				node.exp_set = node.exp_set || {};
-				node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
-				node = node.exp_set[varspec.range];
-				node.exp_range = varspec.range;
-				node.exp_range_vindex = varspec.index;
-				node.next = node.next || new Node;
-				node = node.next;
-				if(varspec.explode){
-					// The optional stuff
-					for(var e_i=0; e_i<6; e_i++){
-					var nodeStart = node;
-					// nth expression prefix
-					setNext.push(node);
-					node.exp_pfx[varspec.prefixNext] = node.exp_pfx[varspec.prefixNext] || new Node;
-					node.exp_pfx_vpush = varspec.explode?varspec.index:undefined;
-					node = node.exp_pfx[varspec.prefixNext];
-					// nth expression body
-					node.exp_set = node.exp_set || {};
-					node.exp_set[varspec.range] = node.exp_set[varspec.range] || new Node;
-					node = node.exp_set[varspec.range];
-					node.exp_range = varspec.range;
-					node.exp_range_vindex = varspec.index;
-					node.next = node.next || new Node;
-					//node.next = nodeStart;
-					}
-				}
-				setNext.forEach(function(n){
-					if(n.exp_skp && n.exp_skp!==node){
-						throw new Error('Diverging end');
-					}else{
-						n.exp_skp = node;
-					}
-				});
-			});
-		}else{
-			// Decend node into the branch, creating it if it doesn't exist
-			// if chr is undefined, this will set the key "undefined"
-			node.chr[chr] = node.chr[chr] || new Node;
-			node = node.chr[chr];
+	// Iterate over tokens in route to add the route to the tree
+	var node = this.tree;
+	var uri_i = 0;
+	function addPath(varspec){
+		if(typeof varspec=='string'){
+			for(var i=0; i<varspec.length; i++){
+				var chr = varspec[i];
+				// Decend node into the branch, creating it if it doesn't exist
+				node.match_chr[chr] = node.match_chr[chr] || new Node;
+				node = node.match_chr[chr];
+				node.chr_offset = uri_i;
+				uri_i++;
+			}
+		}else if(varspec===undefined){
+			// EOF condition
+			var chr = 'undefined';
+			node.match_chr[chr] = node.match_chr[chr] || new Node;
+			node = node.match_chr[chr];
 			node.chr_offset = uri_i;
+			uri_i++;
+		}else if(typeof varspec=='object'){
+			var setNext = [];
+			if(varspec.optional){
+				setNext.push(node);
+			}
+			if(varspec.prefix){
+				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
+				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+				node = node.match_pfx[varspec.prefix];
+			}
+			node.list_set = node.list_set || {};
+			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
+			// Cache the ranges in use and sort them based on set size
+			node.list_set_order = Object.keys(node.list_set);
+			node.list_set_order.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
+			node = node.list_set[varspec.range];
+			node.match_range = varspec.range;
+			node.match_range_vindex = varspec.index;
+			node.list_next = node.list_next || new Node;
+			node = node.list_next;
+			if(varspec.explode){
+				// The optional stuff
+				var nodeStart = node;
+				// nth expression prefix
+				setNext.push(node);
+				node.match_pfx[varspec.prefixNext] = node.match_pfx[varspec.prefixNext] || new Node;
+				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+				node = node.match_pfx[varspec.prefixNext];
+				// nth expression body
+				node.list_set = node.list_set || {};
+				node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
+				node = node.list_set[varspec.range];
+				node.match_range = varspec.range;
+				node.match_range_vindex = varspec.index;
+				node.list_repeat = node.list_repeat || new Node;
+				node.list_repeat.match_pfx[varspec.prefixNext] = node;
+				node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+				node.list_next = node.list_next || new Node;
+				node = node.list_next;
+			}
+			setNext.forEach(function(n){
+				n.list_next = node;
+			});
+			uri_i++;
 		}
 	}
-	if(node.end){
+	route.tokens.forEach(addPath);
+	addPath(undefined);
+	if(node.template_match){
 		throw new Error('Route already defined');
 	}
-	node.end = route;
+	node.template_match = route;
 	return route;
 }
 
@@ -347,17 +310,10 @@ var S = {
 // Enable for testing
 for(var n in S) S[n]=n;
 
-// The StateSet tells us the character we're going to parse and the possible ways we could process it
-function StateSet(offset, tier, alternatives){
-	this.offset = offset;
-	this.tier = tier;
-	// A list of equal alternative candidates for processing this input character
-	this.alts = alternatives;
-}
-StateSet.prototype.pushAlt = function pushAlt(alt){
-	if(alt.offset!==this.offset) throw new Error('Incorrect offset, expected '+this.offset+' got '+alt.offset);
-	this.alts.push(alt);
-}
+// Some constants
+var MATCH_CHR = 'match_chr';
+var MATCH_PFX = 'match_pfx';
+var MATCH_RANGE = 'match_range';
 
 function State(prev, offset, branch, mode, type, vpush, vindex){
 	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
@@ -371,8 +327,8 @@ function State(prev, offset, branch, mode, type, vpush, vindex){
 	this.vpush = vpush;
 	this.vindex = vindex;
 }
-State.prototype.push = function push(offset, branch, mode, type, vpush, vindex){
-	return new State(this, offset, branch, mode, type, vpush, vindex);
+State.prototype.match = function match(branch, mode, type, vpush, vindex){
+	return new State(this, this.offset+1, branch, mode, type, vpush, vindex);
 }
 
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
@@ -387,89 +343,78 @@ State.prototype.push = function push(offset, branch, mode, type, vpush, vindex){
 //   If parse_next is empty, set it to the next item popped off of parse_backtrack
 
 Router.prototype.resolveURI = function resolve(uri, flags){
+	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
 	var self = this;
-	var parse_backtrack = [
-		new StateSet(0, 0, [new State(null, 0, this.tree, S.CHR, null)]),
-	];
+	var parse_backtrack = [new State(null, 0, this.tree, S.CHR, null)];
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
-		var mode = state.mode;
-		if(branch.chr[chr]){
-			log(' +parse_chr', parse_chr.offset, branch.chr[chr].nid);
-			parse_chr.pushAlt(state.push(offset+1, branch.chr[chr], S.CHR, 'chr'));
+		const stack = [];
+		function append(v){
+			stack.push(v);
 		}
-		// If the exp_pfx isn't matched, then skip over the following exp_range too...
-		if(branch.exp_pfx[chr]){
-			log(' +parse_pfx', parse_pfx.offset+1, branch.exp_pfx[chr].nid);
-			parse_pfx.pushAlt(state.push(offset+1, branch.exp_pfx[chr], S.CHR, 'exp_pfx', branch.exp_pfx_vpush, undefined));
+
+		// First try patterns with exact character matches
+		if(branch.match_chr[chr]){
+			append(state.match(branch.match_chr[chr], S.CHR, MATCH_CHR));
 		}
-		for(var rangeName in branch.exp_set){
+
+		// If the match_pfx isn't matched, then skip over the following match_range too...
+		if(branch.match_pfx[chr]){
+			append(state.match(branch.match_pfx[chr], S.CHR, 'match_pfx', branch.match_pfx_vpush, undefined));
+		}
+
+		// Then try patterns with range matches
+		for(var rangeName in branch.list_set){
 			var validRange = RANGES_MAP[rangeName];
-			var exprInfo = branch.exp_set[rangeName];
-			log(' exp_set', exprInfo.nid, rangeName);
-			consumeInputCharacter(offset, chr, state, exprInfo);
+			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(append);
 		}
-		if(branch.exp_range){
-			var validRange = RANGES_MAP[branch.exp_range];
+
+		if(branch.match_range){
+			var validRange = RANGES_MAP[branch.match_range];
 			if(chr in validRange){
-				log(' +parse_exp', parse_exp.offset, branch.nid, branch.exp_range);
-				parse_exp.pushAlt(state.push(offset+1, branch, S.CHR, 'exp_range', undefined, branch.exp_range_vindex));
-				//return;
+				append(state.match(branch, S.CHR, MATCH_RANGE, undefined, branch.match_range_vindex));
 			}
 		}
-		if(branch.exp_skp){
-			log(' +parse_skp', parse_skp.offset, branch.exp_skp.nid);
-			// If this expression does not match the current character, advance to the next input pattern that might
-			//consumeInputCharacter(offset, chr, state, branch.exp_skp);
-			parse_skp.pushAlt(new State(state.prev, state.offset, branch.exp_skp, S.CHR, 'exp_skp', state.vpush, state.vindex));
+		// If the expression is optional, try skipping over it, too
+		if(branch.list_next){
+			log(' list_next', branch.list_next.nid);
+			consumeInputCharacter(offset, chr, state, branch.list_next).forEach(append);
 		}
-		if(branch.exp_repeat){
-			log(' +parse_backtrack', branch.exp_repeat.nid);
+		if(branch.list_repeat){
+			log(' +list_repeat', branch.list_repeat.nid);
 			// Push repeat parsing first before everything else (lowest priority)
-			parse_backtrack.push(new StateSet(offset, 4, [
-				state.push(offset, branch.exp_repeat, S.CHR, 'exp_repeat')
-			]));
+			consumeInputCharacter(offset, chr, state, branch.list_repeat).forEach(append);
 		}
-		if(branch.next){
-			log(' next', branch.next.nid);
-			consumeInputCharacter(offset, chr, state, branch.next);
-		}
+		return stack;
 	}
 	for(var offset = 0;;){
-		var stateset_this = parse_backtrack.pop();
+		var state = parse_backtrack.shift();
 		//log(stateset_this);
-		if(!stateset_this) break;
-		offset = stateset_this.offset;
+		if(!state) break;
+		offset = state.offset;
 		if(offset > uri.length) continue;
 		//if(offset > uri.length) throw new Error('Overgrew offset');
-		var parse_chr = new StateSet(offset+1, 4, []);
-		var parse_pfx = new StateSet(offset+1, 3, []);
-		var parse_exp = new StateSet(offset+1, 2, []);
-		var parse_skp = new StateSet(offset, 5, []);
 		// This will set chr===undefined for the EOF position
 		// We could also use another value like "\0" or similar to represent EOF
 		var chr = uri[offset];
-		log('Parse('+offset+')', chr);
-		for(var alt_i=0; alt_i<stateset_this.alts.length; alt_i++){
-			var alt = stateset_this.alts[alt_i];
-			if(routeDebug) log(' branch'+alt_i, alt.branch.nid, matchedExpressions(alt));
-			consumeInputCharacter(offset, chr, alt, alt.branch);
+		var stack = consumeInputCharacter(offset, chr, state, state.branch);
+		// Take all the equal alternatives that matched the EOF and if there's exactly one, return it.
+		if(offset==uri.length){
+			var solutions = stack
+				.filter(function(v){ return v.branch && v.branch.template_match; })
+				.map(function(v){ return finish(v); });
+			if(solutions.length>1){
+				return solutions[0];
+				//log(solutions);
+				//throw new Error('Multiple equal templates matched');
+			}else if(solutions.length==1){
+				return solutions[0];
+			}
 		}
-		if(parse_skp.alts.length) parse_backtrack.push(parse_skp); // Lowest priority
-		if(parse_exp.alts.length) parse_backtrack.push(parse_exp);
-		if(parse_pfx.alts.length) parse_backtrack.push(parse_pfx);
-		if(parse_chr.alts.length) parse_backtrack.push(parse_chr); // Highest priority
-		//log(' parse_backtrack', parse_backtrack);
-
-		var solutions = parse_chr.alts
-			.filter(function(v){ return v.branch && v.branch.end; })
-			.map(function(v){ return finish(v); });
-		if(solutions.length>1){
-			log(solutions);
-			throw new Error('Multiple equal templates matched');
-		}else if(solutions.length==1){
-			return solutions[0];
-		}
+		// Force the order of matches to prefer single-character matches
+		stack.forEach(function(v){ if(v.type==MATCH_CHR) parse_backtrack.push(v); });
+		stack.forEach(function(v){ if(v.type==MATCH_PFX) parse_backtrack.push(v); });
+		stack.forEach(function(v){ if(v.type==MATCH_RANGE) parse_backtrack.push(v); });
 	}
 
 	function matchedExpressions(solution){
@@ -509,7 +454,7 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 
 	function finish(solution){
 		var var_list = matchedExpressions(solution);
-		var route = solution.branch.end;
+		var route = solution.branch.template_match;
 		var bindings = {};
 		route.variables.forEach(function(v){
 			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];

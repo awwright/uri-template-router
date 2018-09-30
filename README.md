@@ -108,6 +108,8 @@ Variables are alphanumeric, and optionally end with a variable modifier:
 
 URI Template Router returns a single, best matching template and the values that the expressions matched.
 
+If one template is a strict subset of another, the router tries to return the route with the smaller matching set first. In the event two patterns are disjoint, superset/subsets are computed left-to-right.
+
 The processor evaluates the URI left to right, preferring to match templates in the following order:
 
 0. Matching a literal character

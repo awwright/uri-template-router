@@ -134,6 +134,19 @@
 		}
 	},
 	{
+		"label": "htindex",
+		"templates": [
+			"http://example.com/",
+			"http://example.com{/a*}/",
+			"http://example.com{/b*}"
+		],
+		"uris": {
+			"http://example.com/": {},
+			"http://example.com/root": { "b": ["root"] },
+			"http://example.com/root/": { "a": [ "root" ] }
+		}
+	},
+	{
 		"label": "blog example 2",
 		"templates": [
 			"http://example.com/",

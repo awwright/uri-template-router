@@ -16,12 +16,7 @@ tests.forEach(function(testPage){
 		});
 		Object.keys(testPage.uris).forEach(function(uri){
 			it(uri, function(){
-				try {
-					var route = router.resolveURI(uri);
-				}catch(e){
-					console.log('error', uri, expected, route, e.stack);
-					return;
-				}
+				var route = router.resolveURI(uri);
 				var expected = testPage.uris[uri];
 				if(route && route.data){
 					assert.deepEqual(expected, route.data);
