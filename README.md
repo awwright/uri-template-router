@@ -88,12 +88,15 @@ For example:
 
 ```javascript
 var router = new Router;
-router.addTemplate('http://localhost/123.txt');
+router.addTemplate('http://localhost/other.txt');
 router.addTemplate('http://localhost/{file}.txt');
 router.addTemplate('http://localhost/{file}');
-var route1 = router.resolveURI('http://localhost/123.txt'); //  // route2.template == 'http://localhost/{file}.txt'
-var route2 = route1.next(); // route2.template == 'http://localhost/{file}.txt'
-var route3 = route2.next(); // route3.template == 'http://localhost/{file}'
+var route1 = router.resolveURI('http://localhost/index.txt');
+// route1.template == 'http://localhost/{file}.txt'
+var route2 = route1.next();
+// route2.template == 'http://localhost/{file}'
+var route3 = route2.next();
+// route3 == undefined
 ```
 
 
