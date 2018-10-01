@@ -70,11 +70,31 @@ Add a template to the set of templates. Mutates the instance.
 
 ### Router#resolveURI(uri, options)
 
-Match a given URI against the set of templates and return the best match as a Result object with the following properties:
+Match a given URI against the set of templates and return the best match as a Result object.
+
+### Result
+
+with the following properties:
 
 * pattern: the pattern that was matched
 * name: the value of the third argument provided to addTemplate
 * data: matched values for each of the variables, if any
+
+### Result#next()
+
+Allows you to continue searching for a matching route. This is useful if you hit the database after the first match, but didn't find a record, so want to try the next match.
+
+For example:
+
+```javascript
+var router = new Router;
+router.addTemplate('http://localhost/123.txt');
+router.addTemplate('http://localhost/{file}.txt');
+router.addTemplate('http://localhost/{file}');
+var route1 = router.resolveURI('http://localhost/123.txt'); //  // route2.template == 'http://localhost/{file}.txt'
+var route2 = route1.next(); // route2.template == 'http://localhost/{file}.txt'
+var route3 = route2.next(); // route3.template == 'http://localhost/{file}'
+```
 
 
 ## URI Template Format
@@ -132,5 +152,4 @@ For example, given the URI <`.../foo.html`>, the following templates would be pr
 * Cast variables to numbers
 * Access to raw URI data
 * Dump error on invalid URI
-* return next() call to continue evaluating state tree
 * Variable flags
