@@ -162,13 +162,19 @@ Route.prototype.gen = function Route_gen(data){
 	return out;
 }
 
-function Result(router, uri, route, data){
+function Result(router, uri, options, route, data, remaining_state){
 	this.router = router;
 	this.uri = uri;
+	this.options = options;
 	this.route = route;
 	this.template = route.template;
 	this.name = route.name;
 	this.data = data;
+	this.remaining_state = remaining_state;
+}
+
+Result.prototype.next = function next(){
+	return this.router.resolveURI(this.uri, this.options, this.remaining_state);
 }
 
 
@@ -215,20 +221,20 @@ Router.modifiers = {
 	'&': new Modifier('&', '&', 'UNRESERVED'),
 };
 
-Router.prototype.addTemplate = function addTemplate(uri, options, name){
-	if(typeof uri=='object' && options===undefined && name===undefined){
-		route = uri;
-		uri = route.template;
-		variables = route.options;
+Router.prototype.addTemplate = function addTemplate(template, options, name){
+	if(typeof template=='object' && options===undefined && name===undefined){
+		var route = template;
+		template = route.template;
+		options = route.options;
 		name = route.name;
 	}else{
-		var route = new Route(uri, options, name);
+		var route = new Route(template, options, name);
 	}
 	this.routes.push(route);
 
 	// Iterate over tokens in route to add the route to the tree
 	var node = this.tree;
-	var uri_i = 0;
+	var template_i = 0;
 	function addPath(varspec){
 		if(typeof varspec=='string'){
 			for(var i=0; i<varspec.length; i++){
@@ -236,16 +242,16 @@ Router.prototype.addTemplate = function addTemplate(uri, options, name){
 				// Decend node into the branch, creating it if it doesn't exist
 				node.match_chr[chr] = node.match_chr[chr] || new Node;
 				node = node.match_chr[chr];
-				node.chr_offset = uri_i;
-				uri_i++;
+				node.chr_offset = template_i;
+				template_i++;
 			}
 		}else if(varspec===undefined){
 			// EOF condition
 			var chr = 'undefined';
 			node.match_chr[chr] = node.match_chr[chr] || new Node;
 			node = node.match_chr[chr];
-			node.chr_offset = uri_i;
-			uri_i++;
+			node.chr_offset = template_i;
+			template_i++;
 		}else if(typeof varspec=='object'){
 			var setNext = [];
 			if(varspec.optional){
@@ -289,7 +295,7 @@ Router.prototype.addTemplate = function addTemplate(uri, options, name){
 			setNext.forEach(function(n){
 				n.list_next = node;
 			});
-			uri_i++;
+			template_i++;
 		}
 	}
 	route.tokens.forEach(addPath);
@@ -342,10 +348,14 @@ State.prototype.match = function match(branch, mode, type, vpush, vindex){
 //   Try to match next character of input to next literal in template. Push all matches onto parse_next queue.
 //   If parse_next is empty, set it to the next item popped off of parse_backtrack
 
-Router.prototype.resolveURI = function resolve(uri, flags){
+Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
 	var self = this;
-	var parse_backtrack = [new State(null, 0, this.tree, S.CHR, null)];
+	if(initial_state){
+		var parse_backtrack = initial_state.slice();
+	}else{
+		var parse_backtrack = [new State(null, 0, this.tree, S.CHR, null)];
+	}
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		const stack = [];
@@ -459,6 +469,6 @@ Router.prototype.resolveURI = function resolve(uri, flags){
 		route.variables.forEach(function(v){
 			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
 		});
-		return new Result(self, uri, route, bindings);
+		return new Result(self, uri, flags, route, bindings, parse_backtrack);
 	}
 }
