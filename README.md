@@ -57,16 +57,31 @@ r.resolveURI('http://example.com/first/second/third/'); // returns:
 }
 ```
 
+## Features
+
+### Router
+
+The `Router` class maintains a list of routers
+
 
 ## API
 
-### new module.Router()
+### Router
 
-Create an instance of Router.
+Instances of `Router` store a tree of templates that can be searched for matches.
+
+In the context of a Router, a template is also called a _Route_.
 
 ### Router#addTemplate(pattern, options, name)
 
+* pattern: string. Expects a valid URI Template.
+* options: object. Currently reserved.
+* name: any value. User-specified arbritrary value to be returned when this route is matched. Stored in `Router#name` and `Result#name`.
+* returns: Route
+
 Add a template to the set of templates. Mutates the instance.
+
+Returns a `Route` object representing the particular route added.
 
 ### Router#resolveURI(uri, options)
 
@@ -74,7 +89,7 @@ Match a given URI against the set of templates and return the best match as a Re
 
 ### Result
 
-with the following properties:
+Provides following properties:
 
 * pattern: the pattern that was matched
 * name: the value of the third argument provided to addTemplate
@@ -155,4 +170,18 @@ For example, given the URI <`.../foo.html`>, the following templates would be pr
 * Cast variables to numbers
 * Access to raw URI data
 * Dump error on invalid URI
-* Variable flags
+* Variable flags:
+  - minimum/maximum length
+
+
+## Index of Files
+
+* README.md - you're looking at it
+* example.html - Example usage in a Web browser
+* index.js - entry point & entire code base
+* node_modules/ - packages for running tests
+* package.json - npm package metadata
+* perf.js - performance testing script
+* test/*.js - test suite hooks for mocha
+* test/base.json - Data for uri-template-router tests
+* test/uritemplate-test/ - the official URI Templates test suite

@@ -32,7 +32,7 @@ var testRouters = {
 };
 padlen = Math.max.apply(null, Object.keys(testRouters).map(function(v){ return v.length; }));
 
-var testData = require('./t/base.json');
+var testData = require('./test/base.json');
 var cycles = 10000;
 
 testData.forEach(function(testPage, pg){
@@ -51,6 +51,7 @@ testData.forEach(function(testPage, pg){
 				var route = router.resolveURI(uri);
 			}
 		}
+		// Multiply by number of resolveURI calls so that rated frequency is per-call
 		pus(rn, start, cycles*uris.length);
 		Object.keys(testPage.uris).forEach(function(uri){
 		});
