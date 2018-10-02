@@ -27,9 +27,6 @@ nid.i = 0;
 function Node(){
 	this.nid = nid();
 	this.chr_offset = null;
-	// Automatically matches the given template
-	// Expressions to decend into
-	this.list_set = [];
 	// If we're currently in an expression
 	this.match_range = null;
 	this.list_repeat = null;
@@ -43,6 +40,8 @@ function Node(){
 	this.match_pfx = {};
 	// Alternative sets to try matching at the same time
 	this.list_set = {};
+	// The keys have an order, keep track of the order here
+	this.list_set_keys = [];
 	// Decend into this for more alternatives
 	this.list_next = null;
 	this.list_skp = null;
@@ -265,8 +264,8 @@ Router.prototype.addTemplate = function addTemplate(template, options, name){
 			node.list_set = node.list_set || {};
 			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
 			// Cache the ranges in use and sort them based on set size
-			node.list_set_order = Object.keys(node.list_set);
-			node.list_set_order.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
+			node.list_set_keys = Object.keys(node.list_set);
+			node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
 			node = node.list_set[varspec.range];
 			node.match_range = varspec.range;
 			node.match_range_vindex = varspec.index;
@@ -283,6 +282,9 @@ Router.prototype.addTemplate = function addTemplate(template, options, name){
 				// nth expression body
 				node.list_set = node.list_set || {};
 				node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
+				// Don't forget to sort!
+				node.list_set_keys = Object.keys(node.list_set);
+				node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
 				node = node.list_set[varspec.range];
 				node.match_range = varspec.range;
 				node.match_range_vindex = varspec.index;
@@ -374,7 +376,8 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		}
 
 		// Then try patterns with range matches
-		for(var rangeName in branch.list_set){
+		for(var i=0; i<branch.list_set_keys.length; i++){
+			var rangeName = branch.list_set_keys[i];
 			var validRange = RANGES_MAP[rangeName];
 			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(append);
 		}

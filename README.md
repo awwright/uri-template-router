@@ -70,7 +70,7 @@ The `Router` class maintains a list of routers
 
 Instances of `Router` store a tree of templates that can be searched for matches.
 
-In the context of a Router, a template is also called a _Route_.
+In the context of a Router, a template is stored in a _Route_ object.
 
 ### Router#addTemplate(pattern, options, name)
 
