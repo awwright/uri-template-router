@@ -212,8 +212,8 @@ function Modifier(prefix, prefixNext, range){
 Router.modifiers = {
 	'': new Modifier('', ',', 'UNRESERVED'),
 	'+': new Modifier('', ',', 'RESERVED_UNRESERVED'),
-	'#': new Modifier('#', null, 'RESERVED_UNRESERVED'),
-	'.': new Modifier('.', null, 'UNRESERVED'),
+	'#': new Modifier('#', ',', 'RESERVED_UNRESERVED'),
+	'.': new Modifier('.', '.', 'UNRESERVED'),
 	'/': new Modifier('/', '/', 'UNRESERVED'),
 	';': new Modifier(';', ';', 'UNRESERVED'),
 	'?': new Modifier('?', '&', 'UNRESERVED'),
@@ -323,20 +323,43 @@ var MATCH_CHR = 'match_chr';
 var MATCH_PFX = 'match_pfx';
 var MATCH_RANGE = 'match_range';
 
-function State(prev, offset, branch, mode, type, vpush, vindex){
+var MATCH_SORT = {
+	INIT: 0,
+	MATCH_CHR: 10,
+	MATCH_PFX: 20,
+	MATCH_RANGE: {
+		UNRESERVED: 30,
+		RESERVED_UNRESERVED: 31,
+		QUERY: 32,
+	},
+};
+
+function State(prev, offset, branch, mode, type, sort, vpush, vindex){
 	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
 	if(prev && (offset !== prev.offset+1)) throw new Error('out-of-order state history, expected '+(prev.offset+1)+' got '+offset);
 	if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
+	if(typeof sort!=='number') throw new Error('Expected `sort` to be a number');
+	// The state at the previous character
 	this.prev = prev;
+	// The current character position
 	this.offset = offset;
+	// Branch of the tree the match made found on
 	this.branch = branch;
+	// The type of character being consumed (CHR, PCT1, etc.)
 	this.mode = mode;
+	// The type of match that was made (match_pfx, etc.)
 	this.type = type;
+	// The sort order of the match that was made
+	this.sort = sort;
+	// The order the match was inserted into the tree, e.g. in case an expression is skipped, prefer the earlier matched one
+	this.weight = 0;
+	// If an expression prefix is being matched, and needs to be pushed onto an array, which expression
 	this.vpush = vpush;
+	// If a variable is being matched, which expression
 	this.vindex = vindex;
 }
-State.prototype.match = function match(branch, mode, type, vpush, vindex){
-	return new State(this, this.offset+1, branch, mode, type, vpush, vindex);
+State.prototype.match = function match(branch, mode, type, sort, vpush, vindex){
+	return new State(this, this.offset+1, branch, mode, type, sort, vpush, vindex);
 }
 
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
@@ -356,7 +379,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	if(initial_state){
 		var parse_backtrack = initial_state.slice();
 	}else{
-		var parse_backtrack = [new State(null, 0, this.tree, S.CHR, null)];
+		var parse_backtrack = [new State(null, 0, this.tree, S.CHR, MATCH_CHR, MATCH_SORT.INIT, null)];
 	}
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
@@ -367,12 +390,12 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 
 		// First try patterns with exact character matches
 		if(branch.match_chr[chr]){
-			append(state.match(branch.match_chr[chr], S.CHR, MATCH_CHR));
+			append(state.match(branch.match_chr[chr], S.CHR, MATCH_CHR, MATCH_SORT.MATCH_CHR));
 		}
 
 		// If the match_pfx isn't matched, then skip over the following match_range too...
 		if(branch.match_pfx[chr]){
-			append(state.match(branch.match_pfx[chr], S.CHR, 'match_pfx', branch.match_pfx_vpush, undefined));
+			append(state.match(branch.match_pfx[chr], S.CHR, MATCH_PFX, MATCH_SORT.MATCH_PFX, branch.match_pfx_vpush, undefined));
 		}
 
 		// Then try patterns with range matches
@@ -385,7 +408,8 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		if(branch.match_range){
 			var validRange = RANGES_MAP[branch.match_range];
 			if(chr in validRange){
-				append(state.match(branch, S.CHR, MATCH_RANGE, undefined, branch.match_range_vindex));
+				var sort = MATCH_SORT.MATCH_RANGE[branch.match_range];
+				append(state.match(branch, S.CHR, MATCH_RANGE, sort, undefined, branch.match_range_vindex));
 			}
 		}
 		// If the expression is optional, try skipping over it, too
@@ -424,7 +448,11 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				return solutions[0];
 			}
 		}
-		// Force the order of matches to prefer single-character matches
+		// Force the order of matches to prefer single-character matches (the `sort`)
+		// Otherwise, preserve insertion order (the `weight`)
+//		stack.forEach(function(v, i){ v.weight = i; });
+//		stack.sort(function(a, b){ return (a.weight - b.weight); });
+//		stack.forEach(function(v){ parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_CHR) parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_PFX) parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_RANGE) parse_backtrack.push(v); });

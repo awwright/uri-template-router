@@ -164,6 +164,18 @@
 		}
 	},
 	{
+		"label": "set size order",
+		"templates": [
+			"http://example.com/",
+			"http://example.com/{+a}{c}",
+			"http://example.com/{b}{+d}"
+		],
+		"uris": {
+			"http://example.com/": {},
+			"http://example.com//root": { "b": "/root" }
+		}
+	},
+	{
 		"label": "pct-encoded characters",
 		"templates": [
 			"{expr}"
