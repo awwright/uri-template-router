@@ -131,33 +131,47 @@ function Route(template, options, name){
 	}
 }
 Route.prototype.gen = function Route_gen(data){
+	if(typeof data!='object') throw new Error('Expected arguments[0] `data` to be an object');
 	var out = "";
 	function encodeURIComponent_v(v){
 		return encodeURIComponent(v).replace(/!/g, '%21');
 	}
 	this.tokens.forEach(function(t){
+		var varvalue = data[t.varname];
 		if(typeof t=='string') out += t;
 		else if(typeof t=='object'){
 			var encode = (t.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
-			if(typeof data[t.varname]=='string' || typeof data[t.varname]=='number'){
+			if(typeof varvalue=='string' || typeof varvalue=='number'){
 				out += t.prefix || '';
-				var value = data[t.varname];
+				var value = varvalue;
 				if(t.length) value = value.substring(0, t.length);
 				if(t.withName) out += t.varname + '=';
 				out += encode(value);
-			}else if(Array.isArray(data[t.varname]) && data[t.varname].length>0){
+			}else if(Array.isArray(varvalue) && varvalue.length>0){
 				out += t.prefix || '';
 				if(t.explode){
-					out += data[t.varname].map(function(value){
-						if(t.length) value = value.substring(0, t.length);
+					out += varvalue.map(function(value){
+						if(t.length) value = value.toString().substring(0, t.length);
 						if(t.withName) return t.varname + '=' + encode(value);
 						else return encode(value);
 					}).join(t.prefixNext);
 				}else{
-					var value = data[t.varname];
+					var value = varvalue;
 					if(t.length) value = value.substring(0, t.length);
 					if(t.withName) out += t.varname + '=';
-					out += encode(value.join(','));
+					out += value.map(function(v){ return encode(v); }).join(',');
+				}
+			}else if(typeof varvalue == 'object' && varvalue){
+				out += t.prefix || '';
+				if(t.explode){
+					out += Object.keys(varvalue).map(function(key){
+						if(t.withName) return key + '=' + encode(varvalue[key]);
+						else return encode(varvalue[key]);
+					}).join(t.prefixNext);
+				}else{
+					out += Object.keys(varvalue).map(function(key){
+						return key + ',' + encode(varvalue[key]);
+					}).join(',');
 				}
 			}
 		}
