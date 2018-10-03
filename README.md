@@ -64,13 +64,87 @@ r.resolveURI('http://example.com/first/second/third/'); // returns:
 The `Router` class maintains a list of routers
 
 
-## API
-
-### Router
-
-Instances of `Router` store a tree of templates that can be searched for matches.
 
 In the context of a Router, a template is stored in a _Route_ object.
+
+Call `Router#addTemplate` to add a template to the search tree:
+
+```javascript
+var router = new Router;
+router.addTemplate('http://localhost/other.txt');
+```
+
+### Variables/expressions in templates
+
+These routes may have variables, called _expressions_. Expressions are put inside a matched set of curly braces:
+
+```javascript
+router.addTemplate('http://localhost/{page}');
+```
+
+The search routine will try to pick the template that matches the smallest set of URIs. Insertion order does not affect the outcome of the search.
+
+Templates are automatically anchored at the beginning and end.
+
+### Naming routes
+
+Routes may be given an optional name, using the third argument of `Router#addTemplate(template, options, name)`:
+
+```javascript
+router.addTemplate('http://localhost/{page}.txt', {}, 'page_txt');
+var result = router.resolveURI('http://localhost/index.txt');
+assert(result.name === 'page_txt');
+```
+
+### Matched values
+
+When an expression matches an input, you can see what each expression inside the template was matched to through the `Result#data` property:
+
+```javascript
+var result = router.resolveURI('http://localhost/index.txt');
+result.template === 'http://localhost/{page}.txt'
+result.name === 'page_txt'
+assert(result.data.page === 'index');
+```
+
+### Resume search
+
+Functioning similar to a generator, you can call `Result#next()` to get the next iteration of the state machine. The `next` call is functional, and will return the same result each iteration (unless the tree was modified, this behavior is currently undefined).
+
+```javascript
+var res2 = result.next();
+assert(result.template === 'http://localhost/{page}');
+assert(result.data.page === 'index.txt');
+```
+
+### Expression types
+
+Functioning similar to a generator, you can call `Result#next()` to get the next iteration of the state machine. The `next` call is functional, and will return the same result each iteration (unless the tree was modified, this behavior is currently undefined).
+
+```javascript
+var res2 = result.next();
+assert(result.template === 'http://localhost/{page}');
+assert(result.data.page === 'index.txt');
+```
+
+### Repeating matches
+
+Some types of expressions can be matched more than once and provided as array items:
+
+```javascript
+router.addTemplate('http://localhost/~{user}{/path*}');
+var res3 = result.resolveURI('http://localhost/~root/about/me.txt');
+assert(result.data.user === 'root');
+assert(result.data.path[0] === 'about');
+assert(result.data.path[1] === 'me.txt');
+```
+
+
+## API
+
+### new Router()
+
+Constructor. No options.
 
 ### Router#addTemplate(pattern, options, name)
 
