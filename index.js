@@ -470,7 +470,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		// Force the order of matches to prefer single-character matches (the `sort`)
 		// Otherwise, preserve insertion order (the `weight`)
 //		stack.forEach(function(v, i){ v.weight = i; });
-//		stack.sort(function(a, b){ return (a.weight - b.weight); });
+//		stack.sort(function(a, b){ return (a.sort - b.sort) || (a.weight - b.weight); });
 //		stack.forEach(function(v){ parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_CHR) parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_PFX) parse_backtrack.push(v); });
