@@ -104,6 +104,7 @@ function Route(template, options, name){
 					prefix: index ? prefixNext : prefix,
 					prefixNext: prefixNext,
 					range: modifier.range,
+					withName: modifier.withName,
 					explode: explode,
 					optional: true,
 					length: len || null,
@@ -142,17 +143,20 @@ Route.prototype.gen = function Route_gen(data){
 				out += t.prefix || '';
 				var value = data[t.varname];
 				if(t.length) value = value.substring(0, t.length);
+				if(t.withName) out += t.varname + '=';
 				out += encode(value);
 			}else if(Array.isArray(data[t.varname]) && data[t.varname].length>0){
 				out += t.prefix || '';
 				if(t.explode){
 					out += data[t.varname].map(function(value){
 						if(t.length) value = value.substring(0, t.length);
-						return encode(value);
+						if(t.withName) return t.varname + '=' + encode(value);
+						else return encode(value);
 					}).join(t.prefixNext);
 				}else{
 					var value = data[t.varname];
 					if(t.length) value = value.substring(0, t.length);
+					if(t.withName) out += t.varname + '=';
 					out += encode(value.join(','));
 				}
 			}
@@ -203,21 +207,22 @@ function getRangeMap(range){
 var RANGES_MAP = {};
 Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
 
-function Modifier(prefix, prefixNext, range){
+function Modifier(prefix, prefixNext, range, withName){
 	this.prefix = prefix;
 	this.prefixNext = prefixNext;
 	this.range = range;
+	this.withName = withName;
 }
 
 Router.modifiers = {
-	'': new Modifier('', ',', 'UNRESERVED'),
-	'+': new Modifier('', ',', 'RESERVED_UNRESERVED'),
-	'#': new Modifier('#', ',', 'RESERVED_UNRESERVED'),
-	'.': new Modifier('.', '.', 'UNRESERVED'),
-	'/': new Modifier('/', '/', 'UNRESERVED'),
-	';': new Modifier(';', ';', 'UNRESERVED'),
-	'?': new Modifier('?', '&', 'UNRESERVED'),
-	'&': new Modifier('&', '&', 'UNRESERVED'),
+	'': new Modifier('', ',', 'UNRESERVED', false),
+	'+': new Modifier('', ',', 'RESERVED_UNRESERVED', false),
+	'#': new Modifier('#', ',', 'RESERVED_UNRESERVED', false),
+	'.': new Modifier('.', '.', 'UNRESERVED', false),
+	'/': new Modifier('/', '/', 'UNRESERVED', false),
+	';': new Modifier(';', ';', 'UNRESERVED', true),
+	'?': new Modifier('?', '&', 'UNRESERVED', true),
+	'&': new Modifier('&', '&', 'UNRESERVED', true),
 };
 
 Router.prototype.addTemplate = function addTemplate(template, options, name){
