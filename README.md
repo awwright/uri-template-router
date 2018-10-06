@@ -61,13 +61,11 @@ r.resolveURI('http://example.com/first/second/third/'); // returns:
 
 ### Router
 
-The `Router` class maintains a list of routers
+The `Router` class maintains a list of routes.
 
+A _Route_ is a URI template associated with an optional name.
 
-
-In the context of a Router, a template is stored in a _Route_ object.
-
-Call `Router#addTemplate` to add a template to the search tree:
+Call `Router#addTemplate` to add a route to the search tree:
 
 ```javascript
 var router = new Router;
