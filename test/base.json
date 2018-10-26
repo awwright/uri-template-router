@@ -164,6 +164,31 @@
 		}
 	},
 	{
+		"label": "multilevel",
+		"templates": [
+			"http://example.com/",
+			"http://example.com/a/b/c",
+			"http://example.com/a/b{/c}",
+			"http://example.com/a{/b}/c",
+			"http://example.com/a{/b}{/c}",
+			"http://example.com{/a}/b/c",
+			"http://example.com{/a}/b{/c}",
+			"http://example.com{/a}{/b}/c",
+			"http://example.com{/a}{/b}{/c}"
+		],
+		"uris": {
+			"http://example.com/":      { },
+			"http://example.com/a":     { },
+			"http://example.com/a/":    { },
+			"http://example.com/a/2":   {          "b":"2" },
+			"http://example.com/a/b":   { },
+			"http://example.com/a/b/":  { },
+			"http://example.com/a/b/c": { },
+			"http://example.com/a/2/3": {          "b":"2", "c":"3" },
+			"http://example.com/1/2/3": { "a":"1", "b":"2", "c":"3" }
+		}
+	},
+	{
 		"label": "pct-encoded characters",
 		"templates": [
 			"{expr}"
