@@ -163,6 +163,7 @@ Match a given URI against the set of templates and return the best match as a Re
 
 Provides following properties:
 
+* uri: the URI that was matched
 * pattern: the pattern that was matched
 * name: the value of the third argument provided to addTemplate
 * data: matched values for each of the variables, if any
@@ -185,6 +186,15 @@ var route2 = route1.next();
 var route3 = route2.next();
 // route3 == undefined
 ```
+
+
+### Result#rewrite(route)
+
+Allows a result to be rewritten into another form using the matched data from the input. This serves a similar function to a regular expression replace.
+
+`route` may be a Route object, or a string (which will create a Route object).
+
+Returns a new `Result` object with the rewritten `uri`.
 
 
 ## URI Template Format
