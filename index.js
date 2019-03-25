@@ -190,6 +190,15 @@ function Result(router, uri, options, route, data, remaining_state){
 	this.remaining_state = remaining_state;
 }
 
+Result.prototype.rewrite = function rewrite(template, options, name){
+	if(typeof template==='string'){
+		template = new Route(template, options, name);
+	}
+	var uri = template.gen(this.data);
+
+	return new Result(this.router, uri, options, template, this.data);
+}
+
 Result.prototype.next = function next(){
 	return this.router.resolveURI(this.uri, this.options, this.remaining_state);
 }
