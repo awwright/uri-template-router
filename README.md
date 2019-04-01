@@ -243,6 +243,9 @@ For example, given the URI <`.../foo.html`>, the following templates would be pr
 0. <`.../foo.{ext}`>
 0. <`.../{base}.html`>
 0. <`.../{file}`>
+0. <`...{/path}.html`>
+0. <`...{/path}`>
+0. <`...{/path*}`>
 
 
 ### ToDo
