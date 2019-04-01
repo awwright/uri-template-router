@@ -53,9 +53,8 @@ Node.prototype.toString = function toString(){
 
 module.exports.Route = Route;
 function Route(template, options, name){
+	if(typeof template!=='string') throw new Error('Expected `template` to be a string');
 	this.template = template;
-	if(variables===undefined) variables = [];
-	else if(!Array.isArray(variables)) throw new Error('Expected arguments[1] to be an array');
 	this.options = options;
 	this.name = name;
 
