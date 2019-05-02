@@ -52,9 +52,9 @@ Node.prototype.toString = function toString(){
 }
 
 module.exports.Route = Route;
-function Route(template, options, name){
-	if(typeof template!=='string') throw new Error('Expected `template` to be a string');
-	this.template = template;
+function Route(uriTemplate, options, name){
+	if(typeof uriTemplate!=='string') throw new Error('Expected `uriTemplate` to be a string');
+	this.uriTemplate = uriTemplate;
 	this.options = options;
 	this.name = name;
 
@@ -62,12 +62,12 @@ function Route(template, options, name){
 	var varnames = this.varnames = {};
 	var variables = this.variables = [];
 	var tokens = this.tokens = [];
-	for(var uri_i=0; uri_i<template.length; uri_i++){
-		var chr = template[uri_i];
+	for(var uri_i=0; uri_i<uriTemplate.length; uri_i++){
+		var chr = uriTemplate[uri_i];
 		if(chr=='{'){
-			var endpos = template.indexOf('}', uri_i+2);
+			var endpos = uriTemplate.indexOf('}', uri_i+2);
 			if(endpos<0) throw new Error('Unclosed expression: Expected "}" but found end of template');
-			var patternBody = template.substring(uri_i+1, endpos);
+			var patternBody = uriTemplate.substring(uri_i+1, endpos);
 			uri_i = endpos;
 			// If the first character is part of a valid variable name, assume the default modifier
 			// Else, assume the first character is a modifier
@@ -183,24 +183,29 @@ function Result(router, uri, options, route, data, remaining_state){
 	this.uri = uri;
 	this.options = options;
 	this.route = route;
-	this.template = route.template;
+	this.uriTemplate = route.uriTemplate;
 	this.name = route.name;
 	this.data = data;
 	this.remaining_state = remaining_state;
 }
 
-Result.prototype.rewrite = function rewrite(template, options, name){
-	if(typeof template==='string'){
-		template = new Route(template, options, name);
+Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
+	if(typeof uriTemplate==='string'){
+		uriTemplate = new Route(uriTemplate, options, name);
 	}
-	var uri = template.gen(this.data);
+	var uri = uriTemplate.gen(this.data);
 
-	return new Result(this.router, uri, options, template, this.data);
+	return new Result(this.router, uri, options, uriTemplate, this.data);
 }
 
 Result.prototype.next = function next(){
 	return this.router.resolveURI(this.uri, this.options, this.remaining_state);
 }
+
+Object.defineProperty(Result.prototype, "template", {
+	get: function templateGet(){ return this.uriTemplate; },
+	set: function templateSet(v){ return this.uriTemplate = v; },
+})
 
 
 var RANGES = {
@@ -247,14 +252,14 @@ Router.modifiers = {
 	'&': new Modifier('&', '&', 'UNRESERVED', true),
 };
 
-Router.prototype.addTemplate = function addTemplate(template, options, name){
-	if(typeof template=='object' && options===undefined && name===undefined){
-		var route = template;
-		template = route.template;
+Router.prototype.addTemplate = function addTemplate(uriTemplate, options, name){
+	if(typeof uriTemplate=='object' && options===undefined && name===undefined){
+		var route = uriTemplate;
+		uriTemplate = route.uriTemplate;
 		options = route.options;
 		name = route.name;
 	}else{
-		var route = new Route(template, options, name);
+		var route = new Route(uriTemplate, options, name);
 	}
 	this.routes.push(route);
 
