@@ -169,6 +169,9 @@ Route.prototype.gen = function Route_gen(data){
 					out += value.map(function(v){ return encode(v); }).join(',');
 				}
 			}else if(typeof varvalue == 'object' && varvalue){
+				if(t.length){
+					throw new Error('Cannot substring object');
+				}
 				out += t.prefix || '';
 				if(t.explode){
 					out += Object.keys(varvalue).map(function(key){
