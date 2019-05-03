@@ -52,11 +52,11 @@ Node.prototype.toString = function toString(){
 }
 
 module.exports.Route = Route;
-function Route(uriTemplate, options, name){
+function Route(uriTemplate, options, matchValue){
 	if(typeof uriTemplate!=='string') throw new Error('Expected `uriTemplate` to be a string');
 	this.uriTemplate = uriTemplate;
 	this.options = options;
-	this.name = name;
+	this.matchValue = matchValue;
 
 	// Parse the URI template
 	var varnames = this.varnames = {};
@@ -177,6 +177,9 @@ Route.prototype.gen = function Route_gen(data){
 	});
 	return out;
 }
+Object.defineProperty(Route.prototype, "name", {
+	get: function templateGet(){ return this.matchValue; },
+});
 
 function Result(router, uri, options, route, data, remaining_state){
 	this.router = router;
@@ -184,7 +187,7 @@ function Result(router, uri, options, route, data, remaining_state){
 	this.options = options;
 	this.route = route;
 	this.uriTemplate = route.uriTemplate;
-	this.name = route.name;
+	this.matchValue = route.matchValue;
 	this.data = data;
 	this.remaining_state = remaining_state;
 }
@@ -206,6 +209,10 @@ Object.defineProperty(Result.prototype, "template", {
 	get: function templateGet(){ return this.uriTemplate; },
 	set: function templateSet(v){ return this.uriTemplate = v; },
 })
+
+Object.defineProperty(Result.prototype, "name", {
+	get: function templateGet(){ return this.matchValue; },
+});
 
 
 var RANGES = {
@@ -252,14 +259,14 @@ Router.modifiers = {
 	'&': new Modifier('&', '&', 'UNRESERVED', true),
 };
 
-Router.prototype.addTemplate = function addTemplate(uriTemplate, options, name){
-	if(typeof uriTemplate=='object' && options===undefined && name===undefined){
+Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchValue){
+	if(typeof uriTemplate=='object' && options===undefined && matchValue===undefined){
 		var route = uriTemplate;
 		uriTemplate = route.uriTemplate;
 		options = route.options;
-		name = route.name;
+		matchValue = route.matchValue;
 	}else{
-		var route = new Route(uriTemplate, options, name);
+		var route = new Route(uriTemplate, options, matchValue);
 	}
 	this.routes.push(route);
 
