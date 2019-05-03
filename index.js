@@ -51,6 +51,9 @@ Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
 }
 
+var rule_literals = /([\x21\x23-\x24\x26\x28-\x3B\x3D\x3F-\x5B\x5D\x5F\x61-\x7A\xA0-\uD7FF\uE000-\uFDCF\uFDF0-\uFFEF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|%[0-9A-Fa-f][0-9A-Fa-f])/;
+var rule_varspec = /^([0-9A-Za-z_]|%[0-9A-Fa-f]{2})(\.?([0-9A-Za-z_]|%[0-9A-Fa-f]{2}))*(:[0-9]{0,3}|\*)?$/;
+
 module.exports.Route = Route;
 function Route(uriTemplate, options, matchValue){
 	if(typeof uriTemplate!=='string') throw new Error('Expected `uriTemplate` to be a string');
@@ -82,6 +85,9 @@ function Route(uriTemplate, options, matchValue){
 			.substring(modifierChar.length)
 			.split(/,/g)
 			.map(function(varspec, index){
+				if(!varspec.match(rule_varspec)){
+					throw new Error('Malformed expression '+JSON.stringify(varspec));
+				}
 				// Test for explode modifier
 				if(varspec.match(/\*$/)){
 					if(!prefixNext){
@@ -121,11 +127,13 @@ function Route(uriTemplate, options, matchValue){
 
 				tokens.push(varspec);
 			});
-		}else{
+		}else if(chr.match(rule_literals)){
 			// Decend node into the branch, creating it if it doesn't exist
 			// if chr is undefined, this will set the key "undefined"
 			if(typeof tokens[tokens.length-1]=='string') tokens[tokens.length-1] += chr;
 			else tokens.push(chr);
+		}else{
+			throw new Error('Unexpected character '+JSON.stringify(chr));
 		}
 	}
 }

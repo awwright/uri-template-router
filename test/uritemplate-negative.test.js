@@ -17,7 +17,8 @@ files.forEach(function(filename){
 				section.testcases.forEach(function(test){
 					it(test[0], function(){
 						assert.throws(function(){
-							var uri = new R.Route(test[0]).gen(section.variables);
+							var route = new R.Route(test[0]);
+							route.gen(section.variables);
 						});
 					});
 				});
