@@ -192,6 +192,7 @@ Object.defineProperty(Route.prototype, "name", {
 	get: function templateGet(){ return this.matchValue; },
 });
 
+module.exports.Result = Result;
 function Result(router, uri, options, route, data, remaining_state){
 	this.router = router;
 	this.uri = uri;
