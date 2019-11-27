@@ -117,13 +117,27 @@ assert(result.data.page === 'index.txt');
 
 ### Expression types
 
-Functioning similar to a generator, you can call `Result#next()` to get the next iteration of the state machine. The `next` call is functional, and will return the same result each iteration (unless the tree was modified, this behavior is currently undefined).
+All URI Template expressions that can be reversed should be supported:
 
-```javascript
-var res2 = result.next();
-assert(result.template === 'http://localhost/{page}');
-assert(result.data.page === 'index.txt');
-```
+* `{var}` — percent-encoded characters are decoded into "var", stopping at reserved characters. There is no distinction between percent-encoded unreserved characters and literal unreserved characters, even though these may technically be different resources.
+* `{+var}` — reads value of the "var" variable without decoding
+* `{#var}` — consumes a leading fragment start `#`
+* `{.var}` — consumes a leading dot `.`
+* `{/var}` — consumes a leading slash `/`
+* `{;var}` — consumes a leading semicolon `;`
+* `{?var}` — consumes a leading query start `?`
+* `{&var}` — consumes a leading ampersand `&`
+
+Some array forms are supported, where the parser will try to match multiple times, pushing each match into an array:
+
+* `{#var+}` — consumes a leading fragment start `#`
+* `{.var+}` — consumes a leading dot `.`
+* `{/var+}` — consumes a leading slash `/`
+* `{;var+}` — consumes a leading semicolon `;`
+* `{?var+}` — consumes a leading query start `?`, subsequent items consume an ampersand `&`
+* `{&var+}` — consumes a leading ampersand `&`
+
+In all cases, the parser tries to match the next character in the template before reading the character into the current variable.
 
 ### Repeating matches
 
