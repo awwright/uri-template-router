@@ -123,7 +123,6 @@ function Route(uriTemplate, options, matchValue){
 			if(!operator){
 				throw new Error('Unknown expression operator: '+JSON.stringify(operatorChar));
 			}
-			var prefix = operator.prefix;
 			var separator = operator.separator;
 			patternBody
 			.substring(operatorChar.length)
@@ -133,41 +132,29 @@ function Route(uriTemplate, options, matchValue){
 					throw new Error('Malformed expression '+JSON.stringify(varspec));
 				}
 				// Test for explode operator
-				if(varspec.match(/\*$/)){
+				const explode = !!varspec.match(/\*$/);
+				if(explode){
 					if(!separator){
 						throw new Error('Variable operator '+JSON.stringify(operatorChar)+' does not work with explode modifier');
 					}
 					var varname = varspec.substring(0, varspec.length-1);
-					var explode = true;
 				}else{
 					var varname = varspec;
-					var explode = false;
 				}
 				// Test for substring modifier
 				if(varname.indexOf(':')>=0){
 					var [varname, len] = varname.split(':');
 				}
 				const maxLength = len ? parseInt(len, 10) : null;
-				const optional = true;
-				const range = operator.range;
-				const withName = operator.withName;
-				return {
+				return new Variable(
 					index,
 					operatorChar,
 					varname,
 					explode,
 					maxLength,
-					optional,
-					prefix: index ? separator : prefix,
-					separator,
-					range,
-					withName
-				};
+				);
 			})
 			.forEach(function(varspec){
-				if(varnames[varspec.varname]){
-					throw new Error('Variable '+JSON.stringify(varspec.varname)+' is already used');
-				}
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
 				variables[varspec.index] = varspec;
@@ -237,6 +224,26 @@ Route.prototype.gen = function Route_gen(data){
 Object.defineProperty(Route.prototype, "name", {
 	get: function templateGet(){ return this.matchValue; },
 });
+
+module.exports.Variable = Variable;
+function Variable(index, operatorChar, varname, explode, maxLength){
+	if(typeof varname !== 'string') throw new Error('Expected `varname` to be a string');
+	if(typeof operatorChar !== 'string') throw new Error('Expected `operatorChar` to be a string');
+	const operator = operators[operatorChar];
+	if(!operators[operatorChar]) throw new Error('Expected `operator` to be a valid operator');
+	if(typeof explode !== 'boolean') throw new Error('Expected `explode` to be a boolean');
+	if(maxLength!==null && typeof maxLength !== 'number') throw new Error('Expected `maxLength` to be a number');
+	this.index = index;
+	this.operatorChar = operatorChar;
+	this.varname = varname;
+	this.explode = explode;
+	this.maxLength = maxLength;
+	this.optional = true;
+	this.prefix = index ? operator.separator : operator.prefix,
+	this.separator = operator.separator,
+	this.range = operator.range;
+	this.withName = operator.withName;
+}
 
 module.exports.Result = Result;
 function Result(router, uri, options, route, data, remaining_state){
