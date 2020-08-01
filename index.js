@@ -176,7 +176,6 @@ function Route(uriTemplate, options, matchValue){
 }
 Route.prototype.gen = function Route_gen(data){
 	if(typeof data!='object') throw new Error('Expected arguments[0] `data` to be an object');
-	var out = "";
 	return this.tokens.map( (v)=>v.toString(data) ).join('');
 }
 Object.defineProperty(Route.prototype, "name", {
@@ -208,48 +207,54 @@ Variable.prototype.toString = function(data){
 Variable.prototype.expand = function(data){
 	const t = this;
 	var varvalue = data[t.varname];
-	var out = "";
-	if(typeof t=='string') out += t;
-	else if(typeof t=='object'){
+	if(typeof t=='string'){
+		return t;
+	}
+	if(typeof t=='object'){
 		var encode = (t.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
 		if(typeof varvalue=='string' || typeof varvalue=='number'){
-			out += t.prefix || '';
+			var out = t.prefix || '';
 			var value = varvalue;
 			if(t.maxLength) value = value.substring(0, t.maxLength);
 			if(t.withName) out += t.varname + '=';
 			out += encode(value);
+			return out;
 		}else if(Array.isArray(varvalue) && varvalue.length>0){
-			out += t.prefix || '';
+			var out = t.prefix || '';
 			if(t.explode){
-				out += varvalue.map(function(value){
+				const items = varvalue.map(function(value){
 					if(t.maxLength) value = value.toString().substring(0, t.maxLength);
 					if(t.withName) return t.varname + '=' + encode(value);
 					else return encode(value);
-				}).join(t.separator);
+				});
+				return items.length ? t.prefix+items.join(t.separator) : null;
 			}else{
 				var value = varvalue;
 				if(t.maxLength) value = value.substring(0, t.maxLength);
 				if(t.withName) out += t.varname + '=';
+				if(value.length===0) return null;
 				out += value.map(function(v){ return encode(v); }).join(',');
 			}
+			return out;
 		}else if(typeof varvalue == 'object' && varvalue){
 			if(t.maxLength){
 				throw new Error('Cannot substring object');
 			}
-			out += t.prefix || '';
 			if(t.explode){
-				out += Object.keys(varvalue).map(function(key){
+				const items = Object.keys(varvalue).map(function(key){
 					if(t.withName) return key + '=' + encode(varvalue[key]);
 					else return encode(varvalue[key]);
-				}).join(t.separator);
+				});
+				return items.length ? t.prefix+items.join(t.separator) : null;
 			}else{
-				out += Object.keys(varvalue).map(function(key){
-					return key + ',' + encode(varvalue[key]);
-				}).join(',');
+				const items = Object.keys(varvalue).map(function(key){
+					return encode(key) + ',' + encode(varvalue[key]);
+				});
+				return items.length ? items.join(',') : null;
 			}
 		}
 	}
-	return out;
+	return null;
 }
 
 module.exports.Result = Result;
