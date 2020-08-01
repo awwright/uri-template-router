@@ -72,26 +72,26 @@ function Route(uriTemplate, options, matchValue){
 			if(endpos<0) throw new Error('Unclosed expression: Expected "}" but found end of template');
 			var patternBody = uriTemplate.substring(uri_i+1, endpos);
 			uri_i = endpos;
-			// If the first character is part of a valid variable name, assume the default modifier
-			// Else, assume the first character is a modifier
-			var modifierChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
-			var modifier = Router.modifiers[modifierChar];
-			if(!modifier){
-				throw new Error('Unknown expression operator: '+JSON.stringify(modifier));
+			// If the first character is part of a valid variable name, assume the default operator
+			// Else, assume the first character is a operator
+			var operatorChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
+			var operator = Router.operators[operatorChar];
+			if(!operator){
+				throw new Error('Unknown expression operator: '+JSON.stringify(operator));
 			}
-			var prefix = modifier.prefix;
-			var separator = modifier.separator;
+			var prefix = operator.prefix;
+			var separator = operator.separator;
 			patternBody
-			.substring(modifierChar.length)
+			.substring(operatorChar.length)
 			.split(/,/g)
 			.map(function(varspec, index){
 				if(!varspec.match(rule_varspec)){
 					throw new Error('Malformed expression '+JSON.stringify(varspec));
 				}
-				// Test for explode modifier
+				// Test for explode operator
 				if(varspec.match(/\*$/)){
 					if(!separator){
-						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
+						throw new Error('Variable operator '+JSON.stringify(operator)+' does not work with explode modifier');
 					}
 					var varname = varspec.substring(0, varspec.length-1);
 					var explode = true;
@@ -105,11 +105,11 @@ function Route(uriTemplate, options, matchValue){
 				}
 				return {
 					varname: varname,
-					modifier: modifierChar,
+					operator: operatorChar,
 					prefix: index ? separator : prefix,
 					separator: separator,
-					range: modifier.range,
-					withName: modifier.withName,
+					range: operator.range,
+					withName: operator.withName,
 					explode: explode,
 					optional: true,
 					length: len || null,
@@ -250,22 +250,22 @@ function getRangeMap(range){
 var RANGES_MAP = {};
 Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
 
-function Modifier(prefix, separator, range, withName){
+function Operator(prefix, separator, range, withName){
 	this.prefix = prefix;
 	this.separator = separator;
 	this.range = range;
 	this.withName = withName;
 }
 
-Router.modifiers = {
-	'': new Modifier('', ',', 'UNRESERVED', false),
-	'+': new Modifier('', ',', 'RESERVED_UNRESERVED', false),
-	'#': new Modifier('#', ',', 'RESERVED_UNRESERVED', false),
-	'.': new Modifier('.', '.', 'UNRESERVED', false),
-	'/': new Modifier('/', '/', 'UNRESERVED', false),
-	';': new Modifier(';', ';', 'UNRESERVED', true),
-	'?': new Modifier('?', '&', 'UNRESERVED', true),
-	'&': new Modifier('&', '&', 'UNRESERVED', true),
+Router.operators = {
+	'': new Operator('', ',', 'UNRESERVED', false),
+	'+': new Operator('', ',', 'RESERVED_UNRESERVED', false),
+	'#': new Operator('#', ',', 'RESERVED_UNRESERVED', false),
+	'.': new Operator('.', '.', 'UNRESERVED', false),
+	'/': new Operator('/', '/', 'UNRESERVED', false),
+	';': new Operator(';', ';', 'UNRESERVED', true),
+	'?': new Operator('?', '&', 'UNRESERVED', true),
+	'&': new Operator('&', '&', 'UNRESERVED', true),
 };
 
 Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchValue){
