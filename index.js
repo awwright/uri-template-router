@@ -127,37 +127,10 @@ function Route(uriTemplate, options, matchValue){
 			if(!operator){
 				throw new Error('Unknown expression operator: '+JSON.stringify(operatorChar));
 			}
-			var separator = operator.separator;
 			patternBody
 			.substring(operatorChar.length)
 			.split(/,/g)
-			.map(function(varspec, index){
-				if(!varspec.match(rule_varspec)){
-					throw new Error('Malformed expression '+JSON.stringify(varspec));
-				}
-				// Test for explode operator
-				const explode = !!varspec.match(/\*$/);
-				if(explode){
-					if(!separator){
-						throw new Error('Variable operator '+JSON.stringify(operatorChar)+' does not work with explode modifier');
-					}
-					var varname = varspec.substring(0, varspec.length-1);
-				}else{
-					var varname = varspec;
-				}
-				// Test for substring modifier
-				if(varname.indexOf(':')>=0){
-					var [varname, len] = varname.split(':');
-				}
-				const maxLength = len ? parseInt(len, 10) : null;
-				return new Variable(
-					index,
-					operatorChar,
-					varname,
-					explode,
-					maxLength,
-				);
-			})
+			.map(Variable.from.bind(null, operatorChar))
 			.forEach(function(varspec){
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
@@ -201,6 +174,34 @@ function Variable(index, operatorChar, varname, explode, maxLength){
 	this.range = operator.range;
 	this.withName = operator.withName;
 }
+Variable.from = function(operatorChar, varspec, index){
+	if(!varspec.match(rule_varspec)){
+		throw new Error('Malformed expression '+JSON.stringify(varspec));
+	}
+	const separator = operators[operatorChar];
+	// Test for explode operator
+	const explode = !!varspec.match(/\*$/);
+	if(explode){
+		if(!separator){
+			throw new Error('Variable operator '+JSON.stringify(operatorChar)+' does not work with explode modifier');
+		}
+		var varname = varspec.substring(0, varspec.length-1);
+	}else{
+		var varname = varspec;
+	}
+	// Test for substring modifier
+	if(varname.indexOf(':')>=0){
+		var [varname, len] = varname.split(':');
+	}
+	const maxLength = len ? parseInt(len, 10) : null;
+	return new Variable(
+		index,
+		operatorChar,
+		varname,
+		explode,
+		maxLength,
+	);
+};
 Variable.prototype.toString = function(data){
 	return this.expand(data);
 }
