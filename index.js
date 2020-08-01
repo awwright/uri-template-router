@@ -37,6 +37,10 @@ function getRangeMap(range){
 var RANGES_MAP = {};
 Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
 
+function encodeURIComponent_v(v){
+	return encodeURIComponent(v).replace(/!/g, '%21');
+}
+
 function Operator(prefix, separator, range, withName){
 	this.prefix = prefix;
 	this.separator = separator;
@@ -173,53 +177,7 @@ function Route(uriTemplate, options, matchValue){
 Route.prototype.gen = function Route_gen(data){
 	if(typeof data!='object') throw new Error('Expected arguments[0] `data` to be an object');
 	var out = "";
-	function encodeURIComponent_v(v){
-		return encodeURIComponent(v).replace(/!/g, '%21');
-	}
-	this.tokens.forEach(function(t){
-		var varvalue = data[t.varname];
-		if(typeof t=='string') out += t;
-		else if(typeof t=='object'){
-			var encode = (t.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
-			if(typeof varvalue=='string' || typeof varvalue=='number'){
-				out += t.prefix || '';
-				var value = varvalue;
-				if(t.maxLength) value = value.substring(0, t.maxLength);
-				if(t.withName) out += t.varname + '=';
-				out += encode(value);
-			}else if(Array.isArray(varvalue) && varvalue.length>0){
-				out += t.prefix || '';
-				if(t.explode){
-					out += varvalue.map(function(value){
-						if(t.maxLength) value = value.toString().substring(0, t.maxLength);
-						if(t.withName) return t.varname + '=' + encode(value);
-						else return encode(value);
-					}).join(t.separator);
-				}else{
-					var value = varvalue;
-					if(t.maxLength) value = value.substring(0, t.maxLength);
-					if(t.withName) out += t.varname + '=';
-					out += value.map(function(v){ return encode(v); }).join(',');
-				}
-			}else if(typeof varvalue == 'object' && varvalue){
-				if(t.maxLength){
-					throw new Error('Cannot substring object');
-				}
-				out += t.prefix || '';
-				if(t.explode){
-					out += Object.keys(varvalue).map(function(key){
-						if(t.withName) return key + '=' + encode(varvalue[key]);
-						else return encode(varvalue[key]);
-					}).join(t.separator);
-				}else{
-					out += Object.keys(varvalue).map(function(key){
-						return key + ',' + encode(varvalue[key]);
-					}).join(',');
-				}
-			}
-		}
-	});
-	return out;
+	return this.tokens.map( (v)=>v.toString(data) ).join('');
 }
 Object.defineProperty(Route.prototype, "name", {
 	get: function templateGet(){ return this.matchValue; },
@@ -243,6 +201,55 @@ function Variable(index, operatorChar, varname, explode, maxLength){
 	this.separator = operator.separator,
 	this.range = operator.range;
 	this.withName = operator.withName;
+}
+Variable.prototype.toString = function(data){
+	return this.expand(data);
+}
+Variable.prototype.expand = function(data){
+	const t = this;
+	var varvalue = data[t.varname];
+	var out = "";
+	if(typeof t=='string') out += t;
+	else if(typeof t=='object'){
+		var encode = (t.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
+		if(typeof varvalue=='string' || typeof varvalue=='number'){
+			out += t.prefix || '';
+			var value = varvalue;
+			if(t.maxLength) value = value.substring(0, t.maxLength);
+			if(t.withName) out += t.varname + '=';
+			out += encode(value);
+		}else if(Array.isArray(varvalue) && varvalue.length>0){
+			out += t.prefix || '';
+			if(t.explode){
+				out += varvalue.map(function(value){
+					if(t.maxLength) value = value.toString().substring(0, t.maxLength);
+					if(t.withName) return t.varname + '=' + encode(value);
+					else return encode(value);
+				}).join(t.separator);
+			}else{
+				var value = varvalue;
+				if(t.maxLength) value = value.substring(0, t.maxLength);
+				if(t.withName) out += t.varname + '=';
+				out += value.map(function(v){ return encode(v); }).join(',');
+			}
+		}else if(typeof varvalue == 'object' && varvalue){
+			if(t.maxLength){
+				throw new Error('Cannot substring object');
+			}
+			out += t.prefix || '';
+			if(t.explode){
+				out += Object.keys(varvalue).map(function(key){
+					if(t.withName) return key + '=' + encode(varvalue[key]);
+					else return encode(varvalue[key]);
+				}).join(t.separator);
+			}else{
+				out += Object.keys(varvalue).map(function(key){
+					return key + ',' + encode(varvalue[key]);
+				}).join(',');
+			}
+		}
+	}
+	return out;
 }
 
 module.exports.Result = Result;
