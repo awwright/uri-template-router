@@ -11,6 +11,50 @@ function dir(){
 	if(routeDebug) console.dir.apply(console, arguments);
 }
 
+var RANGES = {
+	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
+	RESERVED_UNRESERVED: ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~'],
+	QUERY: [
+		'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
+		"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
+		':', '@', // colon and at-sign (from pchar)
+		'/', '?', // and slash and question-mark
+	],
+};
+function getRangeMap(range){
+	var validMap = {};
+	range.forEach(function(chr){
+		if(chr.length==1){
+			validMap[chr] = null;
+		}else if(chr.length==2){
+			for(var i=chr.charCodeAt(0), end=chr.charCodeAt(1); i<=end; i++){
+				validMap[String.fromCharCode(i)] = null;
+			}
+		}
+	});
+	return validMap;
+}
+var RANGES_MAP = {};
+Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
+
+function Operator(prefix, separator, range, withName){
+	this.prefix = prefix;
+	this.separator = separator;
+	this.range = range;
+	this.withName = withName;
+}
+
+const operators = {
+	'': new Operator('', ',', 'UNRESERVED', false),
+	'+': new Operator('', ',', 'RESERVED_UNRESERVED', false),
+	'#': new Operator('#', ',', 'RESERVED_UNRESERVED', false),
+	'.': new Operator('.', '.', 'UNRESERVED', false),
+	'/': new Operator('/', '/', 'UNRESERVED', false),
+	';': new Operator(';', ';', 'UNRESERVED', true),
+	'?': new Operator('?', '&', 'UNRESERVED', true),
+	'&': new Operator('&', '&', 'UNRESERVED', true),
+};
+
 function Router(){
 	this.routes = [];
 	this.tree = new Node;
@@ -49,7 +93,7 @@ function Node(){
 }
 Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
-}
+};
 
 var rule_literals = /([\x21\x23-\x24\x26\x28-\x3B\x3D\x3F-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\uD7FF\uE000-\uFDCF\uFDF0-\uFFEF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|%[0-9A-Fa-f][0-9A-Fa-f])/;
 var rule_varspec = /^([0-9A-Za-z_]|%[0-9A-Fa-f]{2})(\.?([0-9A-Za-z_]|%[0-9A-Fa-f]{2}))*(:[0-9]{0,3}|\*)?$/;
@@ -75,7 +119,7 @@ function Route(uriTemplate, options, matchValue){
 			// If the first character is part of a valid variable name, assume the default operator
 			// Else, assume the first character is a operator
 			var operatorChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
-			var operator = Router.operators[operatorChar];
+			var operator = operators[operatorChar];
 			if(!operator){
 				throw new Error('Unknown expression operator: '+JSON.stringify(operator));
 			}
@@ -222,51 +266,6 @@ Object.defineProperty(Result.prototype, "template", {
 Object.defineProperty(Result.prototype, "name", {
 	get: function templateGet(){ return this.matchValue; },
 });
-
-
-var RANGES = {
-	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
-	RESERVED_UNRESERVED: ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~'],
-	QUERY: [
-		'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
-		"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
-		':', '@', // colon and at-sign (from pchar)
-		'/', '?', // and slash and question-mark
-	],
-};
-function getRangeMap(range){
-	var validMap = {};
-	range.forEach(function(chr){
-		if(chr.length==1){
-			validMap[chr] = null;
-		}else if(chr.length==2){
-			for(var i=chr.charCodeAt(0), end=chr.charCodeAt(1); i<=end; i++){
-				validMap[String.fromCharCode(i)] = null;
-			}
-		}
-	});
-	return validMap;
-}
-var RANGES_MAP = {};
-Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
-
-function Operator(prefix, separator, range, withName){
-	this.prefix = prefix;
-	this.separator = separator;
-	this.range = range;
-	this.withName = withName;
-}
-
-Router.operators = {
-	'': new Operator('', ',', 'UNRESERVED', false),
-	'+': new Operator('', ',', 'RESERVED_UNRESERVED', false),
-	'#': new Operator('#', ',', 'RESERVED_UNRESERVED', false),
-	'.': new Operator('.', '.', 'UNRESERVED', false),
-	'/': new Operator('/', '/', 'UNRESERVED', false),
-	';': new Operator(';', ';', 'UNRESERVED', true),
-	'?': new Operator('?', '&', 'UNRESERVED', true),
-	'&': new Operator('&', '&', 'UNRESERVED', true),
-};
 
 Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchValue){
 	if(typeof uriTemplate=='object' && options===undefined && matchValue===undefined){
