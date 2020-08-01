@@ -121,7 +121,7 @@ function Route(uriTemplate, options, matchValue){
 			var operatorChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
 			var operator = operators[operatorChar];
 			if(!operator){
-				throw new Error('Unknown expression operator: '+JSON.stringify(operator));
+				throw new Error('Unknown expression operator: '+JSON.stringify(operatorChar));
 			}
 			var prefix = operator.prefix;
 			var separator = operator.separator;
@@ -149,14 +149,14 @@ function Route(uriTemplate, options, matchValue){
 				}
 				return {
 					varname: varname,
-					operator: operatorChar,
+					operatorChar: operatorChar,
 					prefix: index ? separator : prefix,
 					separator: separator,
 					range: operator.range,
 					withName: operator.withName,
 					explode: explode,
 					optional: true,
-					length: len || null,
+					maxLength: len || null,
 				};
 			})
 			.forEach(function(varspec, index){
@@ -192,25 +192,25 @@ Route.prototype.gen = function Route_gen(data){
 			if(typeof varvalue=='string' || typeof varvalue=='number'){
 				out += t.prefix || '';
 				var value = varvalue;
-				if(t.length) value = value.substring(0, t.length);
+				if(t.maxLength) value = value.substring(0, t.maxLength);
 				if(t.withName) out += t.varname + '=';
 				out += encode(value);
 			}else if(Array.isArray(varvalue) && varvalue.length>0){
 				out += t.prefix || '';
 				if(t.explode){
 					out += varvalue.map(function(value){
-						if(t.length) value = value.toString().substring(0, t.length);
+						if(t.maxLength) value = value.toString().substring(0, t.maxLength);
 						if(t.withName) return t.varname + '=' + encode(value);
 						else return encode(value);
 					}).join(t.separator);
 				}else{
 					var value = varvalue;
-					if(t.length) value = value.substring(0, t.length);
+					if(t.maxLength) value = value.substring(0, t.maxLength);
 					if(t.withName) out += t.varname + '=';
 					out += value.map(function(v){ return encode(v); }).join(',');
 				}
 			}else if(typeof varvalue == 'object' && varvalue){
-				if(t.length){
+				if(t.maxLength){
 					throw new Error('Cannot substring object');
 				}
 				out += t.prefix || '';
