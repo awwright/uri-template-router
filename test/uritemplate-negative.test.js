@@ -4,11 +4,11 @@ var assert = require('assert');
 var R = require('..');
 
 var files = [
-	'negative-tests.json',
+	'uritemplate-test/negative-tests.json',
 ];
 
 files.forEach(function(filename){
-	var json = fs.readFileSync('test/uritemplate-test/'+filename);
+	var json = fs.readFileSync('test/'+filename);
 	var data = JSON.parse(json);
 	describe(filename, function(){
 		Object.keys(data).forEach(function(sectionName){

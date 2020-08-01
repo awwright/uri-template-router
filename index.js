@@ -80,7 +80,7 @@ function Route(uriTemplate, options, matchValue){
 				throw new Error('Unknown expression operator: '+JSON.stringify(modifier));
 			}
 			var prefix = modifier.prefix;
-			var prefixNext = modifier.prefixNext;
+			var separator = modifier.separator;
 			patternBody
 			.substring(modifierChar.length)
 			.split(/,/g)
@@ -90,7 +90,7 @@ function Route(uriTemplate, options, matchValue){
 				}
 				// Test for explode modifier
 				if(varspec.match(/\*$/)){
-					if(!prefixNext){
+					if(!separator){
 						throw new Error('Variable modifier '+JSON.stringify(modifier)+' does not work with explode modifier');
 					}
 					var varname = varspec.substring(0, varspec.length-1);
@@ -106,8 +106,8 @@ function Route(uriTemplate, options, matchValue){
 				return {
 					varname: varname,
 					modifier: modifierChar,
-					prefix: index ? prefixNext : prefix,
-					prefixNext: prefixNext,
+					prefix: index ? separator : prefix,
+					separator: separator,
 					range: modifier.range,
 					withName: modifier.withName,
 					explode: explode,
@@ -119,12 +119,9 @@ function Route(uriTemplate, options, matchValue){
 				if(varnames[varspec.varname]){
 					throw new Error('Variable '+JSON.stringify(varspec.varname)+' is already used');
 				}
-				var expressionInfo = {};
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
 				variables[varspec.index] = varspec;
-				var range = varspec.range + (varspec.explode?'*':'');
-
 				tokens.push(varspec);
 			});
 		}else if(chr.match(rule_literals)){
@@ -161,7 +158,7 @@ Route.prototype.gen = function Route_gen(data){
 						if(t.length) value = value.toString().substring(0, t.length);
 						if(t.withName) return t.varname + '=' + encode(value);
 						else return encode(value);
-					}).join(t.prefixNext);
+					}).join(t.separator);
 				}else{
 					var value = varvalue;
 					if(t.length) value = value.substring(0, t.length);
@@ -177,7 +174,7 @@ Route.prototype.gen = function Route_gen(data){
 					out += Object.keys(varvalue).map(function(key){
 						if(t.withName) return key + '=' + encode(varvalue[key]);
 						else return encode(varvalue[key]);
-					}).join(t.prefixNext);
+					}).join(t.separator);
 				}else{
 					out += Object.keys(varvalue).map(function(key){
 						return key + ',' + encode(varvalue[key]);
@@ -253,9 +250,9 @@ function getRangeMap(range){
 var RANGES_MAP = {};
 Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
 
-function Modifier(prefix, prefixNext, range, withName){
+function Modifier(prefix, separator, range, withName){
 	this.prefix = prefix;
-	this.prefixNext = prefixNext;
+	this.separator = separator;
 	this.range = range;
 	this.withName = withName;
 }
@@ -327,9 +324,9 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 				var nodeStart = node;
 				// nth expression prefix
 				setNext.push(node);
-				node.match_pfx[varspec.prefixNext] = node.match_pfx[varspec.prefixNext] || new Node;
+				node.match_pfx[varspec.separator] = node.match_pfx[varspec.separator] || new Node;
 				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-				node = node.match_pfx[varspec.prefixNext];
+				node = node.match_pfx[varspec.separator];
 				// nth expression body
 				node.list_set = node.list_set || {};
 				node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
@@ -340,7 +337,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 				node.match_range = varspec.range;
 				node.match_range_vindex = varspec.index;
 				node.list_repeat = node.list_repeat || new Node;
-				node.list_repeat.match_pfx[varspec.prefixNext] = node;
+				node.list_repeat.match_pfx[varspec.separator] = node;
 				node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 				node.list_next = node.list_next || new Node;
 				node = node.list_next;
