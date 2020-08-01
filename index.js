@@ -135,7 +135,7 @@ function Route(uriTemplate, options, matchValue){
 				// Test for explode operator
 				if(varspec.match(/\*$/)){
 					if(!separator){
-						throw new Error('Variable operator '+JSON.stringify(operator)+' does not work with explode modifier');
+						throw new Error('Variable operator '+JSON.stringify(operatorChar)+' does not work with explode modifier');
 					}
 					var varname = varspec.substring(0, varspec.length-1);
 					var explode = true;
@@ -147,19 +147,24 @@ function Route(uriTemplate, options, matchValue){
 				if(varname.indexOf(':')>=0){
 					var [varname, len] = varname.split(':');
 				}
+				const maxLength = len ? parseInt(len, 10) : null;
+				const optional = true;
+				const range = operator.range;
+				const withName = operator.withName;
 				return {
-					varname: varname,
-					operatorChar: operatorChar,
+					index,
+					operatorChar,
+					varname,
+					explode,
+					maxLength,
+					optional,
 					prefix: index ? separator : prefix,
-					separator: separator,
-					range: operator.range,
-					withName: operator.withName,
-					explode: explode,
-					optional: true,
-					maxLength: len || null,
+					separator,
+					range,
+					withName
 				};
 			})
-			.forEach(function(varspec, index){
+			.forEach(function(varspec){
 				if(varnames[varspec.varname]){
 					throw new Error('Variable '+JSON.stringify(varspec.varname)+' is already used');
 				}
