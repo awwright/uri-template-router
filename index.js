@@ -306,74 +306,76 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	// Iterate over tokens in route to add the route to the tree
 	var node = this.tree;
 	var template_i = 0;
-	function addPath(varspec){
-		if(typeof varspec=='string'){
-			for(var i=0; i<varspec.length; i++){
-				var chr = varspec[i];
+	route.tokens.forEach(function(expression){
+		if(typeof expression=='string'){
+			for(var i=0; i<expression.length; i++){
+				var chr = expression[i];
 				// Decend node into the branch, creating it if it doesn't exist
 				node.match_chr[chr] = node.match_chr[chr] || new Node;
 				node = node.match_chr[chr];
 				node.chr_offset = template_i;
 				template_i++;
 			}
-		}else if(varspec===undefined){
-			// EOF condition
-			var chr = 'undefined';
-			node.match_chr[chr] = node.match_chr[chr] || new Node;
-			node = node.match_chr[chr];
-			node.chr_offset = template_i;
-			template_i++;
-		}else if(typeof varspec=='object'){
-			var setNext = [];
-			if(varspec.optional){
-				setNext.push(node);
-			}
-			if(varspec.prefix){
-				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
-				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-				node = node.match_pfx[varspec.prefix];
-			}
+		}else{
+			addPath(expression);
+		}
+	});
+	function addPath(varspec){
+		var setNext = [];
+		if(varspec.optional){
+			setNext.push(node);
+		}
+		if(varspec.prefix){
+			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
+			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+			node = node.match_pfx[varspec.prefix];
+		}
+		node.list_set = node.list_set || {};
+		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
+		// Cache the ranges in use and sort them based on set size
+		node.list_set_keys = Object.keys(node.list_set);
+		node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
+		node = node.list_set[varspec.range];
+		node.match_range = varspec.range;
+		node.match_range_vindex = varspec.index;
+		node.list_next = node.list_next || new Node;
+		node = node.list_next;
+		if(varspec.explode){
+			// The optional stuff
+			var nodeStart = node;
+			// nth expression prefix
+			setNext.push(node);
+			node.match_pfx[varspec.separator] = node.match_pfx[varspec.separator] || new Node;
+			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+			node = node.match_pfx[varspec.separator];
+			// nth expression body
 			node.list_set = node.list_set || {};
 			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
-			// Cache the ranges in use and sort them based on set size
+			// Don't forget to sort!
 			node.list_set_keys = Object.keys(node.list_set);
 			node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
 			node = node.list_set[varspec.range];
 			node.match_range = varspec.range;
 			node.match_range_vindex = varspec.index;
+			node.list_repeat = node.list_repeat || new Node;
+			node.list_repeat.match_pfx[varspec.separator] = node;
+			node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 			node.list_next = node.list_next || new Node;
 			node = node.list_next;
-			if(varspec.explode){
-				// The optional stuff
-				var nodeStart = node;
-				// nth expression prefix
-				setNext.push(node);
-				node.match_pfx[varspec.separator] = node.match_pfx[varspec.separator] || new Node;
-				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-				node = node.match_pfx[varspec.separator];
-				// nth expression body
-				node.list_set = node.list_set || {};
-				node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
-				// Don't forget to sort!
-				node.list_set_keys = Object.keys(node.list_set);
-				node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
-				node = node.list_set[varspec.range];
-				node.match_range = varspec.range;
-				node.match_range_vindex = varspec.index;
-				node.list_repeat = node.list_repeat || new Node;
-				node.list_repeat.match_pfx[varspec.separator] = node;
-				node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-				node.list_next = node.list_next || new Node;
-				node = node.list_next;
-			}
-			setNext.forEach(function(n){
-				n.list_next = node;
-			});
-			template_i++;
 		}
+		setNext.forEach(function(n){
+			n.list_next = node;
+		});
+		template_i++;
 	}
-	route.tokens.forEach(addPath);
-	addPath(undefined);
+	// Add EOF condition
+	{
+		var chr = 'undefined';
+		node.match_chr[chr] = node.match_chr[chr] || new Node;
+		node = node.match_chr[chr];
+		node.chr_offset = template_i;
+		template_i++;
+	}
 	if(node.template_match){
 		throw new Error('Route already defined');
 	}
