@@ -3,12 +3,9 @@
 
 module.exports.Router = Router;
 
-var routeDebug = process.argv && process.argv.indexOf('-v')>=0;
+// var routeDebug = process.argv && process.argv.indexOf('-v')>=0;
 function log(){
-	if(routeDebug) console.log.apply(console, arguments);
-}
-function dir(){
-	if(routeDebug) console.dir.apply(console, arguments);
+	// if(routeDebug) console.log.apply(console, arguments);
 }
 
 var RANGES = {
@@ -90,7 +87,7 @@ function Node(){
 	this.list_set = {};
 	// The keys have an order, keep track of the order here
 	this.list_set_keys = [];
-	// Decend into this for more alternatives
+	// Descend into this for more alternatives
 	this.list_next = null;
 	this.list_skp = null;
 	this.list_skp_nid = null;
@@ -204,7 +201,7 @@ Variable.from = function(operatorChar, varspec, index){
 };
 Variable.prototype.toString = function(data){
 	return this.expand(data);
-}
+};
 Variable.prototype.expand = function(data){
 	const t = this;
 	var varvalue = data[t.varname];
@@ -256,7 +253,7 @@ Variable.prototype.expand = function(data){
 		}
 	}
 	return null;
-}
+};
 
 module.exports.Result = Result;
 function Result(router, uri, options, route, data, remaining_state){
@@ -277,16 +274,16 @@ Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
 	var uri = uriTemplate.gen(this.data);
 
 	return new Result(this.router, uri, options, uriTemplate, this.data);
-}
+};
 
 Result.prototype.next = function next(){
 	return this.router.resolveURI(this.uri, this.options, this.remaining_state);
-}
+};
 
 Object.defineProperty(Result.prototype, "template", {
 	get: function templateGet(){ return this.uriTemplate; },
-	set: function templateSet(v){ return this.uriTemplate = v; },
-})
+	set: function templateSet(v){ this.uriTemplate = v; },
+});
 
 Object.defineProperty(Result.prototype, "name", {
 	get: function templateGet(){ return this.matchValue; },
@@ -381,7 +378,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	}
 	node.template_match = route;
 	return route;
-}
+};
 
 var S = {
 	EOF: 10, // Expending end of input
@@ -434,7 +431,7 @@ function State(prev, offset, branch, mode, type, sort, vpush, vindex){
 }
 State.prototype.match = function match(branch, mode, type, sort, vpush, vindex){
 	return new State(this, this.offset+1, branch, mode, type, sort, vpush, vindex);
-}
+};
 
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
 // Process:
@@ -453,7 +450,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	if(initial_state){
 		var parse_backtrack = initial_state.slice();
 	}else{
-		var parse_backtrack = [new State(null, 0, this.tree, S.CHR, MATCH_CHR, MATCH_SORT.INIT, null)];
+		parse_backtrack = [new State(null, 0, this.tree, S.CHR, MATCH_CHR, MATCH_SORT.INIT, null)];
 	}
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
@@ -524,9 +521,9 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		}
 		// Force the order of matches to prefer single-character matches (the `sort`)
 		// Otherwise, preserve insertion order (the `weight`)
-//		stack.forEach(function(v, i){ v.weight = i; });
-//		stack.sort(function(a, b){ return (a.sort - b.sort) || (a.weight - b.weight); });
-//		stack.forEach(function(v){ parse_backtrack.push(v); });
+		// stack.forEach(function(v, i){ v.weight = i; });
+		// stack.sort(function(a, b){ return (a.sort - b.sort) || (a.weight - b.weight); });
+		// stack.forEach(function(v){ parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_CHR) parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_PFX) parse_backtrack.push(v); });
 		stack.forEach(function(v){ if(v.type==MATCH_RANGE) parse_backtrack.push(v); });
@@ -536,7 +533,6 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
 			//log(item.offset);
-			//dir(item, {depth:2});
 			var branch = item.branch;
 			history.unshift({
 				chr: uri[item.prev.offset],
@@ -547,7 +543,6 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				nid: branch.nid,
 			});
 		}
-		dir(history);
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
@@ -576,4 +571,4 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		});
 		return new Result(self, uri, flags, route, bindings, parse_backtrack);
 	}
-}
+};
