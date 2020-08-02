@@ -147,9 +147,6 @@ Route.prototype.gen = function Route_gen(data){
 	if(typeof data!='object') throw new Error('Expected arguments[0] `data` to be an object');
 	return this.tokens.map( (v)=>v.toString(data) ).join('');
 };
-Object.defineProperty(Route.prototype, "name", {
-	get: function templateGet(){ return this.matchValue; },
-});
 
 module.exports.Expression = Expression;
 function Expression(operatorChar, variableList, index){
