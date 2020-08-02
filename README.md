@@ -249,7 +249,9 @@ The processor evaluates the URI left to right, preferring to match templates in 
 0. Matching a literal character
 0. Matching an expression prefix
 0. Matching an expression body
-0. Repeating the current (if marked with the explode modifier)
+0. Repeating the current variable, if marked with the explode modifier
+0. Skipping over the variable, if not marked required
+0. Skipping over the expression, if not marked required
 
 For example, given the URI <`.../foo.html`>, the following templates would be preferred in the given order:
 

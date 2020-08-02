@@ -19,7 +19,7 @@ tests.forEach(function(testPage){
 				var route = router.resolveURI(uri);
 				var expected = testPage.uris[uri];
 				if(route && route.data){
-					assert.deepEqual(expected, route.data);
+					assert.deepEqual(route.data, expected);
 				}else{
 					assert(!expected);
 				}

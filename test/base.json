@@ -124,13 +124,13 @@
 		"label": "blog example 1",
 		"templates": [
 			"http://example.com/",
-			"http://example.com/root{/base}{/a*}",
+			"http://example.com/root{/base}{/dir*}",
 			"http://example.com/blog{/y,m,d,slug}"
 		],
 		"uris": {
 			"http://example.com/": {},
 			"http://example.com/root": { },
-			"http://example.com/root/base/b/c": { "base":"base", "a": [ "b", "c" ] }
+			"http://example.com/root/base/b/c": { "base":"base", "dir": [ "b", "c" ] }
 		}
 	},
 	{

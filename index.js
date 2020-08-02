@@ -1,4 +1,3 @@
-
 "use strict";
 
 module.exports.Router = Router;
@@ -111,6 +110,7 @@ function Route(uriTemplate, options, matchValue){
 	var varnames = this.varnames = {};
 	var variables = this.variables = [];
 	var tokens = this.tokens = [];
+	var expressionList = [];
 	for(var uri_i=0; uri_i<uriTemplate.length; uri_i++){
 		var chr = uriTemplate[uri_i];
 		if(chr=='{'){
@@ -125,16 +125,14 @@ function Route(uriTemplate, options, matchValue){
 			if(!operator){
 				throw new Error('Unknown expression operator: '+JSON.stringify(operatorChar));
 			}
-			patternBody
-			.substring(operatorChar.length)
-			.split(/,/g)
-			.map(Variable.from.bind(null, operatorChar))
-			.forEach(function(varspec){
+			const expression = Expression.from(patternBody, expressionList.length);
+			expression.variableList.forEach(function(varspec){
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
 				variables[varspec.index] = varspec;
-				tokens.push(varspec);
 			});
+			expressionList.push(expression);
+			tokens.push(expression);
 		}else if(chr.match(rule_literals)){
 			// Decend node into the branch, creating it if it doesn't exist
 			// if chr is undefined, this will set the key "undefined"
@@ -148,52 +146,88 @@ function Route(uriTemplate, options, matchValue){
 Route.prototype.gen = function Route_gen(data){
 	if(typeof data!='object') throw new Error('Expected arguments[0] `data` to be an object');
 	return this.tokens.map( (v)=>v.toString(data) ).join('');
-}
+};
 Object.defineProperty(Route.prototype, "name", {
 	get: function templateGet(){ return this.matchValue; },
 });
 
+module.exports.Expression = Expression;
+function Expression(operatorChar, variableList, index){
+	if(typeof operatorChar !== 'string') throw new Error('Expected `operatorChar` to be a string');
+	if(!operators[operatorChar]) throw new Error('Unknown operator: '+JSON.stringify(operatorChar));
+	variableList.forEach(function(v){
+		if(!(v instanceof Variable)) throw new Error('Expected `variableList` to be array of Variable instances');
+	});
+	this.operatorChar = operatorChar;
+	this.prefix = operators[operatorChar].prefix;
+	this.separator = operators[operatorChar].separator;
+	this.variableList = variableList;
+	this.index = index;
+}
+Expression.from = function(patternBody, index){
+	// If the first character is part of a valid variable name, assume the default operator
+	// Else, assume the first character is a operator
+	var operatorChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
+	var operator = operators[operatorChar];
+	if(!operator){
+		throw new Error('Unknown expression operator: '+JSON.stringify(operator));
+	}
+	const variableList = patternBody
+		.substring(operatorChar.length)
+		.split(/,/g)
+		.map( Variable.from.bind(null, operatorChar) );
+	return new Expression(operatorChar, variableList, index);
+};
+Expression.prototype.toString = function toString(data){
+	const operator = operators[this.operatorChar];
+	if(data){
+		const values = this.variableList.map( (v)=>v.expand(data) ).filter( (v)=>(typeof v==='string') );
+		if(values.length){
+			return operator.prefix + values.join(operator.separator);
+		}else{
+			return '';
+		}
+	}else{
+		// toString will join the Variable#toString() values with commas
+		return '{' + this.operatorChar + this.variableList.toString() + '}';
+	}
+};
+
 module.exports.Variable = Variable;
-function Variable(index, operatorChar, varname, explode, maxLength){
+function Variable(operatorChar, varname, explode, maxLength){
 	if(typeof varname !== 'string') throw new Error('Expected `varname` to be a string');
 	if(typeof operatorChar !== 'string') throw new Error('Expected `operatorChar` to be a string');
 	const operator = operators[operatorChar];
 	if(!operators[operatorChar]) throw new Error('Expected `operator` to be a valid operator');
 	if(typeof explode !== 'boolean') throw new Error('Expected `explode` to be a boolean');
 	if(maxLength!==null && typeof maxLength !== 'number') throw new Error('Expected `maxLength` to be a number');
-	this.index = index;
 	this.operatorChar = operatorChar;
 	this.varname = varname;
 	this.explode = explode;
 	this.maxLength = maxLength;
 	this.optional = true;
-	this.prefix = index ? operator.separator : operator.prefix,
+	this.prefix = operator.prefix;
 	this.separator = operator.separator;
 	this.range = operator.range;
 	this.named = operator.named;
 }
-Variable.from = function(operatorChar, varspec, index){
+Variable.from = function(operatorChar, varspec){
 	if(!varspec.match(rule_varspec)){
 		throw new Error('Malformed expression '+JSON.stringify(varspec));
 	}
 	const separator = operators[operatorChar];
 	// Test for explode operator
 	const explode = !!varspec.match(/\*$/);
-	if(explode){
-		if(!separator){
-			throw new Error('Variable operator '+JSON.stringify(operatorChar)+' does not work with explode modifier');
-		}
-		var varname = varspec.substring(0, varspec.length-1);
-	}else{
-		var varname = varspec;
+	const varnameMaxLength = explode ? varspec.substring(0, varspec.length-1) : varspec;
+	if(explode && !separator){
+		throw new Error('Variable operator '+JSON.stringify(operatorChar)+' does not work with explode modifier');
 	}
 	// Test for substring modifier
-	if(varname.indexOf(':')>=0){
-		var [varname, len] = varname.split(':');
-	}
-	const maxLength = len ? parseInt(len, 10) : null;
+	const varnameMaxLength_i = varnameMaxLength.indexOf(':');
+	const varname = varnameMaxLength_i<0 ? varnameMaxLength : varnameMaxLength.substring(0, varnameMaxLength_i);
+	const maxLengthStr = varnameMaxLength_i<0 ? null : varnameMaxLength.substring(varnameMaxLength_i+1);
+	const maxLength = maxLengthStr ? parseInt(maxLengthStr, 10) : null;
 	return new Variable(
-		index,
 		operatorChar,
 		varname,
 		explode,
@@ -205,20 +239,19 @@ Variable.prototype.toString = function(data){
 };
 Variable.prototype.expand = function(data){
 	const t = this;
-	const op = operators[this.operatorChar];
+	const op = operators[t.operatorChar];
 	var varvalue = data[t.varname];
 	var encode = (op.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
 	if(typeof varvalue=='string' || typeof varvalue=='number'){
 		var value = varvalue;
 		if(t.maxLength) value = value.substring(0, t.maxLength);
 		if(op.named){
-			if(op.form || value) return t.prefix + t.varname + '=' + encode(value);
-			else return t.prefix + t.varname;
+			if(op.form || value) return t.varname + '=' + encode(value);
+			else return t.varname;
 		}else{
-			return t.prefix + encode(value);
+			return encode(value);
 		}
 	}else if(Array.isArray(varvalue) && varvalue.length>0){
-		var out = t.prefix || '';
 		if(t.explode){
 			const items = varvalue.map(function(value){
 				if(t.maxLength) value = value.toString().substring(0, t.maxLength);
@@ -229,34 +262,40 @@ Variable.prototype.expand = function(data){
 					return encode(value);
 				}
 			});
-			return items.length ? t.prefix+items.join(op.separator) : null;
+			return items.length ? items.join(t.separator) : null;
 		}else{
 			var value = varvalue;
 			if(t.maxLength) value = value.substring(0, t.maxLength);
-			if(op.named) out += t.varname + '=';
 			if(value.length===0) return null;
-			out += value.map(function(v){ return encode(v); }).join(',');
+			if(op.named){
+				return t.varname + '=' + value.map(function(v){ return encode(v); }).join(',');
+			}else{
+				return value.map(function(v){ return encode(v); }).join(',');
+			}
 		}
-		return out;
 	}else if(typeof varvalue == 'object' && varvalue){
 		if(t.maxLength){
 			throw new Error('Cannot substring object');
 		}
 		if(t.explode){
+			// Apparently op.named doesn't matter in this case
 			const items = Object.keys(varvalue).map(function(key){
-				if(op.named){
-					if(op.form || varvalue[key]) return key + '=' + encode(varvalue[key]);
-					else return key;
-				}else{
-					return encode(varvalue[key]);
-				}
+				if(op.form || varvalue[key]) return key + '=' + encode(varvalue[key]);
+				else return key;
 			});
-			return items.length ? t.prefix+items.join(op.separator) : null;
+			return items.length ? items.join(t.separator) : null;
 		}else{
-			const items = Object.keys(varvalue).map(function(key){
-				return encode(key) + ',' + encode(varvalue[key]);
-			});
-			return items.length ? items.join(',') : null;
+			if(op.named){
+				const items = Object.keys(varvalue).map(function(key){
+					return encode(key) + ',' + encode(varvalue[key]);
+				});
+				return items.length ? t.varname + '=' + items.join(',') : null;
+			}else{
+				const items = Object.keys(varvalue).map(function(key){
+					return encode(key) + ',' + encode(varvalue[key]);
+				});
+				return items.length ? items.join(',') : null;
+			}
 		}
 	}
 	return null;
@@ -303,56 +342,38 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		options = route.options;
 		matchValue = route.matchValue;
 	}else{
-		var route = new Route(uriTemplate, options, matchValue);
+		route = new Route(uriTemplate, options, matchValue);
 	}
 	this.routes.push(route);
 
 	// Iterate over tokens in route to add the route to the tree
 	var node = this.tree;
 	var template_i = 0;
-	route.tokens.forEach(function(expression){
+	route.tokens.forEach(function addExpression(expression){
 		if(typeof expression=='string'){
 			for(var i=0; i<expression.length; i++){
 				var chr = expression[i];
-				// Decend node into the branch, creating it if it doesn't exist
+				// Descend node into the branch, creating it if it doesn't exist
 				node.match_chr[chr] = node.match_chr[chr] || new Node;
 				node = node.match_chr[chr];
 				node.chr_offset = template_i;
 				template_i++;
 			}
 		}else{
-			addPath(expression);
+			expression.variableList.forEach(addPath);
 		}
 	});
 	function addPath(varspec){
-		var setNext = [];
-		if(varspec.optional){
-			setNext.push(node);
-		}
-		if(varspec.prefix){
-			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
-			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-			node = node.match_pfx[varspec.prefix];
-		}
-		node.list_set = node.list_set || {};
-		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
-		// Cache the ranges in use and sort them based on set size
-		node.list_set_keys = Object.keys(node.list_set);
-		node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
-		node = node.list_set[varspec.range];
-		node.match_range = varspec.range;
-		node.match_range_vindex = varspec.index;
-		node.list_next = node.list_next || new Node;
-		node = node.list_next;
-		if(varspec.explode){
-			// The optional stuff
-			var nodeStart = node;
-			// nth expression prefix
-			setNext.push(node);
-			node.match_pfx[varspec.separator] = node.match_pfx[varspec.separator] || new Node;
-			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-			node = node.match_pfx[varspec.separator];
-			// nth expression body
+		if(typeof varspec=='object'){
+			var setNext = [];
+			if(varspec.optional){
+				setNext.push(node);
+			}
+			if(varspec.prefix){
+				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
+				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+				node = node.match_pfx[varspec.prefix];
+			}
 			node.list_set = node.list_set || {};
 			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
 			// Don't forget to sort!
