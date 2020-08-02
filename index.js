@@ -38,11 +38,12 @@ function encodeURIComponent_v(v){
 	return encodeURIComponent(v).replace(/!/g, '%21');
 }
 
-function Operator(prefix, separator, range, withName){
+function Operator(prefix, separator, range, named, form){
 	this.prefix = prefix;
 	this.separator = separator;
 	this.range = range;
-	this.withName = withName;
+	this.named = named;
+	this.form = form;
 }
 
 const operators = {
@@ -51,9 +52,9 @@ const operators = {
 	'#': new Operator('#', ',', 'RESERVED_UNRESERVED', false),
 	'.': new Operator('.', '.', 'UNRESERVED', false),
 	'/': new Operator('/', '/', 'UNRESERVED', false),
-	';': new Operator(';', ';', 'UNRESERVED', true),
-	'?': new Operator('?', '&', 'UNRESERVED', true),
-	'&': new Operator('&', '&', 'UNRESERVED', true),
+	';': new Operator(';', ';', 'UNRESERVED', true, false),
+	'?': new Operator('?', '&', 'UNRESERVED', true, true),
+	'&': new Operator('&', '&', 'UNRESERVED', true, true),
 };
 
 function Router(){
@@ -167,9 +168,9 @@ function Variable(index, operatorChar, varname, explode, maxLength){
 	this.maxLength = maxLength;
 	this.optional = true;
 	this.prefix = index ? operator.separator : operator.prefix,
-	this.separator = operator.separator,
+	this.separator = operator.separator;
 	this.range = operator.range;
-	this.withName = operator.withName;
+	this.named = operator.named;
 }
 Variable.from = function(operatorChar, varspec, index){
 	if(!varspec.match(rule_varspec)){
@@ -204,52 +205,58 @@ Variable.prototype.toString = function(data){
 };
 Variable.prototype.expand = function(data){
 	const t = this;
+	const op = operators[this.operatorChar];
 	var varvalue = data[t.varname];
-	if(typeof t=='string'){
-		return t;
-	}
-	if(typeof t=='object'){
-		var encode = (t.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
-		if(typeof varvalue=='string' || typeof varvalue=='number'){
-			var out = t.prefix || '';
+	var encode = (op.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
+	if(typeof varvalue=='string' || typeof varvalue=='number'){
+		var value = varvalue;
+		if(t.maxLength) value = value.substring(0, t.maxLength);
+		if(op.named){
+			if(op.form || value) return t.prefix + t.varname + '=' + encode(value);
+			else return t.prefix + t.varname;
+		}else{
+			return t.prefix + encode(value);
+		}
+	}else if(Array.isArray(varvalue) && varvalue.length>0){
+		var out = t.prefix || '';
+		if(t.explode){
+			const items = varvalue.map(function(value){
+				if(t.maxLength) value = value.toString().substring(0, t.maxLength);
+				if(op.named){
+					if(op.form || value) return t.varname + '=' + encode(value);
+					else return t.varname;
+				}else{
+					return encode(value);
+				}
+			});
+			return items.length ? t.prefix+items.join(op.separator) : null;
+		}else{
 			var value = varvalue;
 			if(t.maxLength) value = value.substring(0, t.maxLength);
-			if(t.withName) out += t.varname + '=';
-			out += encode(value);
-			return out;
-		}else if(Array.isArray(varvalue) && varvalue.length>0){
-			var out = t.prefix || '';
-			if(t.explode){
-				const items = varvalue.map(function(value){
-					if(t.maxLength) value = value.toString().substring(0, t.maxLength);
-					if(t.withName) return t.varname + '=' + encode(value);
-					else return encode(value);
-				});
-				return items.length ? t.prefix+items.join(t.separator) : null;
-			}else{
-				var value = varvalue;
-				if(t.maxLength) value = value.substring(0, t.maxLength);
-				if(t.withName) out += t.varname + '=';
-				if(value.length===0) return null;
-				out += value.map(function(v){ return encode(v); }).join(',');
-			}
-			return out;
-		}else if(typeof varvalue == 'object' && varvalue){
-			if(t.maxLength){
-				throw new Error('Cannot substring object');
-			}
-			if(t.explode){
-				const items = Object.keys(varvalue).map(function(key){
-					if(t.withName) return key + '=' + encode(varvalue[key]);
-					else return encode(varvalue[key]);
-				});
-				return items.length ? t.prefix+items.join(t.separator) : null;
-			}else{
-				const items = Object.keys(varvalue).map(function(key){
-					return encode(key) + ',' + encode(varvalue[key]);
-				});
-				return items.length ? items.join(',') : null;
-			}
+			if(op.named) out += t.varname + '=';
+			if(value.length===0) return null;
+			out += value.map(function(v){ return encode(v); }).join(',');
+		}
+		return out;
+	}else if(typeof varvalue == 'object' && varvalue){
+		if(t.maxLength){
+			throw new Error('Cannot substring object');
+		}
+		if(t.explode){
+			const items = Object.keys(varvalue).map(function(key){
+				if(op.named){
+					if(op.form || varvalue[key]) return key + '=' + encode(varvalue[key]);
+					else return key;
+				}else{
+					return encode(varvalue[key]);
+				}
+			});
+			return items.length ? t.prefix+items.join(op.separator) : null;
+		}else{
+			const items = Object.keys(varvalue).map(function(key){
+				return encode(key) + ',' + encode(varvalue[key]);
+			});
+			return items.length ? items.join(',') : null;
 		}
 	}
 	return null;
