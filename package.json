@@ -24,6 +24,6 @@
   "homepage": "https://github.com/awwright/uri-template-router#readme",
   "dependencies": {},
   "devDependencies": {
-    "mocha": "^5.2.0"
+    "mocha": "^8.1.0"
   }
 }
