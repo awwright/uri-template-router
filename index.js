@@ -280,7 +280,7 @@ Variable.prototype.expand = function(data){
 		if(t.explode){
 			// Apparently op.named doesn't matter in this case
 			const items = Object.keys(varvalue).map(function(key){
-				if(op.form || varvalue[key]) return key + '=' + encode(varvalue[key]);
+				if(op.form || varvalue[key]) return encode(key) + '=' + encode(varvalue[key]);
 				else return key;
 			});
 			return items.length ? items.join(t.separator) : null;
@@ -364,30 +364,29 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		}
 	});
 	function addPath(varspec){
-		if(typeof varspec=='object'){
-			var setNext = [];
-			if(varspec.optional){
-				setNext.push(node);
-			}
-			if(varspec.prefix){
-				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
-				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-				node = node.match_pfx[varspec.prefix];
-			}
-			node.list_set = node.list_set || {};
-			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
-			// Don't forget to sort!
-			node.list_set_keys = Object.keys(node.list_set);
-			node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
-			node = node.list_set[varspec.range];
-			node.match_range = varspec.range;
-			node.match_range_vindex = varspec.index;
-			node.list_repeat = node.list_repeat || new Node;
-			node.list_repeat.match_pfx[varspec.separator] = node;
-			node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-			node.list_next = node.list_next || new Node;
-			node = node.list_next;
+		if(typeof varspec!=='object') throw new Error('Unknown type');
+		var setNext = [];
+		if(varspec.optional){
+			setNext.push(node);
 		}
+		if(varspec.prefix){
+			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
+			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+			node = node.match_pfx[varspec.prefix];
+		}
+		node.list_set = node.list_set || {};
+		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
+		// Don't forget to sort!
+		node.list_set_keys = Object.keys(node.list_set);
+		node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
+		node = node.list_set[varspec.range];
+		node.match_range = varspec.range;
+		node.match_range_vindex = varspec.index;
+		node.list_repeat = node.list_repeat || new Node;
+		node.list_repeat.match_pfx[varspec.separator] = node;
+		node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+		node.list_next = node.list_next || new Node;
+		node = node.list_next;
 		setNext.forEach(function(n){
 			n.list_next = node;
 		});
@@ -499,8 +498,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 
 		// Then try patterns with range matches
 		for(var i=0; i<branch.list_set_keys.length; i++){
-			var rangeName = branch.list_set_keys[i];
-			var validRange = RANGES_MAP[rangeName];
+			const rangeName = branch.list_set_keys[i];
 			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(append);
 		}
 
