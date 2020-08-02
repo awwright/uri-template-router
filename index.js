@@ -235,7 +235,10 @@ Variable.from = function(operatorChar, varspec){
 	);
 };
 Variable.prototype.toString = function(data){
-	return this.expand(data);
+	if(data) return this.expand(data);
+	return this.varname +
+		(this.explode ? '*' : '') +
+		(typeof this.maxLength==='number' ? ':'+this.maxLength : '');
 };
 Variable.prototype.expand = function(data){
 	const t = this;
