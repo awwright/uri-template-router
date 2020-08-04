@@ -34,7 +34,7 @@ describe('Result', function(){
 		var route2 = route1.rewrite(route2i);
 		assert.strictEqual(route2.uri, 'http://localhost/123.html');
 		assert.strictEqual(route2.template, 'http://localhost/{file}.html');
-		assert.strictEqual(route2.data.file, '123');
+		assert.strictEqual(route2.params.file, '123');
 	});
 	it('Result#rewrite (Route argument)', function(){
 		var router = new Router;
@@ -43,6 +43,6 @@ describe('Result', function(){
 		var route2 = route1.rewrite('http://localhost/{file}.html');
 		assert.strictEqual(route2.uri, 'http://localhost/123.html');
 		assert.strictEqual(route2.template, 'http://localhost/{file}.html');
-		assert.strictEqual(route2.data.file, '123');
+		assert.strictEqual(route2.params.file, '123');
 	});
 });

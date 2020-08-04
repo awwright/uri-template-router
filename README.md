@@ -1,13 +1,13 @@
 
 # URI Template Router
 
-Match a URI to a URI template from a set of templates.
+Match a URI to an [RFC 6570 URI template](https://tools.ietf.org/html/rfc6570) from a set of templates.
 
 * Specify a list of templates to test against using `{braces}` to specify variables
 * Returns the best match, regardless of insertion order
 * Scales to any number of templates/patterns to test against
 * Supports repeating expressions using explode modifier
-* Routes store an associated "name" argument for storing arbritrary values (including objects or functions)
+* Routes store an associated "matchValue" argument for storing arbritrary values (including objects or functions)
 * State machine evaluation can be resumed if the returned match isn't good (e.g. if first match wasn't in the database)
 
 ## Example
@@ -21,39 +21,44 @@ r.addTemplate('http://example.com/q{n}.txt', {}, 'page_txt');
 r.addTemplate('http://example.com/blog{/y,m,d,slug}', {}, 'blog_post');
 r.addTemplate('http://example.com{/path*}', {}, 'path');
 
-r.resolveURI('http://example.com/'); // returns:
+r.resolveURI('http://example.com/');
+// returns:
 {
   pattern: 'http://example.com/',
-  name: 'index',
+  matchValue: 'index',
   data: undefined,
 }
 
-r.resolveURI('http://example.com/qfoo.txt'); // returns:
+r.resolveURI('http://example.com/qfoo.txt');
+// returns:
 {
   pattern: 'http://example.com/q{n}.txt',
-  name: 'page_txt',
+  matchValue: 'page_txt',
   data: { n: 'foo' },
 }
 
-r.resolveURI('http://example.com/q123.html'); // returns:
+r.resolveURI('http://example.com/q123.html');
+// returns:
 {
   pattern: 'http://example.com/q{n}.html',
-  name: 'page_html',
+  matchValue: 'page_html',
   data: { n: '123' },
 }
 
-r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel'); // returns:
+r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel');
+// returns:
 {
   pattern: 'http://example.com/blog{/y,m,d,slug}',
-  name: 'blog_post',
-  data: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
+  matchValue: 'blog_post',
+  params: { y: '2010', m: '01', d: '02', slug: 'inventing-the-wheel' },
 }
 
-r.resolveURI('http://example.com/first/second/third/'); // returns:
+r.resolveURI('http://example.com/first/second/third/');
+// returns:
 {
   pattern: 'http://example.com{/path*}',
-  name: 'path',
-  data: { path: [ 'first', 'second', 'third', '' ] },
+  matchValue: 'path',
+  params: { path: [ 'first', 'second', 'third', '' ] },
 }
 ```
 
@@ -63,7 +68,7 @@ r.resolveURI('http://example.com/first/second/third/'); // returns:
 
 The `Router` class maintains a list of routes.
 
-A _Route_ is a URI template associated with an optional name.
+A _Route_ is a URI template associated with an optional, arbitrary value.
 
 Call `Router#addTemplate` to add a route to the search tree:
 
@@ -86,23 +91,23 @@ Templates are automatically anchored at the beginning and end.
 
 ### Naming routes
 
-Routes may be given an optional name, using the third argument of `Router#addTemplate(template, options, name)`:
+Routes may be given an optional, arbitrary value, using the third argument of `Router#addTemplate(template, options, matchValue)`:
 
 ```javascript
 router.addTemplate('http://localhost/{page}.txt', {}, 'page_txt');
 var result = router.resolveURI('http://localhost/index.txt');
-assert(result.name === 'page_txt');
+assert(result.matchValue === 'page_txt');
 ```
 
 ### Matched values
 
-When an expression matches an input, you can see what each expression inside the template was matched to through the `Result#data` property:
+When an expression matches an input, you can see what each expression inside the template was matched to through the `Result#params` property:
 
 ```javascript
 var result = router.resolveURI('http://localhost/index.txt');
 result.template === 'http://localhost/{page}.txt'
-result.name === 'page_txt'
-assert(result.data.page === 'index');
+result.matchValue === 'page_txt'
+assert(result.params.page === 'index');
 ```
 
 ### Resume search
@@ -112,7 +117,7 @@ Functioning similar to a generator, you can call `Result#next()` to get the next
 ```javascript
 var res2 = result.next();
 assert(result.template === 'http://localhost/{page}');
-assert(result.data.page === 'index.txt');
+assert(result.params.page === 'index.txt');
 ```
 
 ### Expression types
@@ -146,9 +151,9 @@ Some types of expressions can be matched more than once and provided as array it
 ```javascript
 router.addTemplate('http://localhost/~{user}{/path*}');
 var res3 = result.resolveURI('http://localhost/~root/about/me.txt');
-assert(result.data.user === 'root');
-assert(result.data.path[0] === 'about');
-assert(result.data.path[1] === 'me.txt');
+assert(result.params.user === 'root');
+assert(result.params.path[0] === 'about');
+assert(result.params.path[1] === 'me.txt');
 ```
 
 
@@ -158,11 +163,11 @@ assert(result.data.path[1] === 'me.txt');
 
 Constructor. No options.
 
-### Router#addTemplate(pattern, options, name)
+### Router#addTemplate(pattern, options, matchValue)
 
 * pattern: string. Expects a valid URI Template.
 * options: object. Currently reserved.
-* name: any value. User-specified arbritrary value to be returned when this route is matched. Stored in `Router#name` and `Result#name`.
+* matchValue: any value. User-specified arbitrary value to be returned when this route is matched. Stored in `Router#matchValue` and `Result#matchValue`.
 * returns: Route
 
 Add a template to the set of templates. Mutates the instance.
@@ -173,14 +178,31 @@ Returns a `Route` object representing the particular route added.
 
 Match a given URI against the set of templates and return the best match as a Result object.
 
+### new Route(uriTemplate, options, value)
+
+### Route#toString(params)
+
+With an object `params`, it fills the URI Template with the given values:
+
+```javascript
+var route = new Route('http://localhost/{file}.txt');
+route.toString({ file: 'foo' });
+// Return: "http://localhost/foo.txt"
+```
+
+It supports all the standard URI Template features.
+
+Without `params`, generates the URI Template as a string.
+
 ### Result
 
 Provides following properties:
 
-* uri: the URI that was matched
-* pattern: the pattern that was matched
-* name: the value of the third argument provided to addTemplate
-* data: matched values for each of the variables, if any
+* `uri`: the URI that was matched
+* `pattern`: the pattern that was matched
+* `matchValue`: the value of the third argument provided to addTemplate
+* `params`: matched values for each of the variables, if any
+* `route`: The Route instance that was matched
 
 ### Result#next()
 
@@ -283,6 +305,6 @@ For example, given the URI <`.../foo.html`>, the following templates would be pr
 * node_modules/ - packages for running tests
 * package.json - npm package metadata
 * perf.js - performance testing script
-* test/*.js - test suite hooks for mocha
+* test/*.test.js - Mocha test suite files
 * test/base.json - Data for uri-template-router tests
 * test/uritemplate-test/ - the official URI Templates test suite

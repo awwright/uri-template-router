@@ -143,12 +143,12 @@ function Route(uriTemplate, options, matchValue){
 		}
 	}
 }
-Route.prototype.gen = function Route_gen(data){
-	if(typeof data!='object') throw new Error('Expected arguments[0] `data` to be an object');
-	return this.tokens.map( (v)=>v.toString(data) ).join('');
+Route.prototype.gen = function Route_gen(params){
+	if(typeof params!='object') throw new Error('Expected arguments[0] `params` to be an object');
+	return this.tokens.map( (v)=>v.toString(params) ).join('');
 };
-Route.prototype.toString = function toString(data){
-	return this.tokens.map( (v)=>v.toString(data) ).join('');
+Route.prototype.toString = function toString(params){
+	return this.tokens.map( (v)=>v.toString(params) ).join('');
 }
 
 module.exports.Expression = Expression;
@@ -178,10 +178,10 @@ Expression.from = function(patternBody, index){
 		.map( Variable.from.bind(null, operatorChar) );
 	return new Expression(operatorChar, variableList, index);
 };
-Expression.prototype.toString = function toString(data){
+Expression.prototype.toString = function toString(params){
 	const operator = operators[this.operatorChar];
-	if(data){
-		const values = this.variableList.map( (v)=>v.expand(data) ).filter( (v)=>(typeof v==='string') );
+	if(params){
+		const values = this.variableList.map( (v)=>v.expand(params) ).filter( (v)=>(typeof v==='string') );
 		if(values.length){
 			return operator.prefix + values.join(operator.separator);
 		}else{
@@ -234,16 +234,16 @@ Variable.from = function(operatorChar, varspec){
 		maxLength,
 	);
 };
-Variable.prototype.toString = function(data){
-	if(data) return this.expand(data);
+Variable.prototype.toString = function(params){
+	if(params) return this.expand(params);
 	return this.varname +
 		(this.explode ? '*' : '') +
 		(typeof this.maxLength==='number' ? ':'+this.maxLength : '');
 };
-Variable.prototype.expand = function(data){
+Variable.prototype.expand = function(params){
 	const t = this;
 	const op = operators[t.operatorChar];
-	var varvalue = data[t.varname];
+	var varvalue = params[t.varname];
 	var encode = (op.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
 	if(typeof varvalue=='string' || typeof varvalue=='number'){
 		var value = varvalue;
@@ -305,14 +305,14 @@ Variable.prototype.expand = function(data){
 };
 
 module.exports.Result = Result;
-function Result(router, uri, options, route, data, remaining_state){
+function Result(router, uri, options, route, params, remaining_state){
 	this.router = router;
 	this.uri = uri;
 	this.options = options;
 	this.route = route;
 	this.uriTemplate = route.uriTemplate;
 	this.matchValue = route.matchValue;
-	this.data = data;
+	this.params = params;
 	this.remaining_state = remaining_state;
 }
 
@@ -320,9 +320,9 @@ Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
 	if(typeof uriTemplate==='string'){
 		uriTemplate = new Route(uriTemplate, options, name);
 	}
-	var uri = uriTemplate.gen(this.data);
+	var uri = uriTemplate.gen(this.params);
 
-	return new Result(this.router, uri, options, uriTemplate, this.data);
+	return new Result(this.router, uri, options, uriTemplate, this.params);
 };
 
 Result.prototype.next = function next(){
@@ -506,9 +506,9 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		}
 
 		if(branch.match_range){
-			var validRange = RANGES_MAP[branch.match_range];
-			if(chr in validRange){
-				var sort = MATCH_SORT.MATCH_RANGE[branch.match_range];
+			const validRange = RANGES_MAP[branch.match_range];
+			if(chr in validRange || chr==='%'){
+				const sort = MATCH_SORT.MATCH_RANGE[branch.match_range];
 				append(state.match(branch, S.CHR, MATCH_RANGE, sort, undefined, branch.match_range_vindex));
 			}
 		}
@@ -534,6 +534,11 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		// This will set chr===undefined for the EOF position
 		// We could also use another value like "\0" or similar to represent EOF
 		var chr = uri[offset];
+		if(chr=='%' && chr[offset+1] && chr[offset+2]){
+			chr += chr[offset+1] && chr[offset+2];
+			if(!chr.match(/^%[0-9A-F]{2}$/)) throw new Error('Invalid pct-encoded character');
+			offset += 2;
+		}
 		var stack = consumeInputCharacter(offset, chr, state, state.branch);
 		// Take all the equal alternatives that matched the EOF and if there's exactly one, return it.
 		if(offset==uri.length){
