@@ -58,19 +58,15 @@ const operators = {
 
 function Router(){
 	this.routes = [];
-	this.tree = new Node;
+	this.nid = 0;
+	this.tree = new Node(++this.nid);
 }
-
-function nid(){
-	return 'N'+(nid.i++);
-}
-nid.i = 0;
 
 // A node on the tree is a list of various options to try to match against an input character.
 // The "next" and "list_set" options specify another branch to also try and match against the current input character.
 // The "template_match" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
-function Node(){
-	this.nid = nid();
+function Node(nid){
+	this.nid = nid;
 	this.chr_offset = null;
 	// If we're currently in an expression
 	this.match_range = null;
@@ -339,6 +335,7 @@ Object.defineProperty(Result.prototype, "name", {
 });
 
 Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchValue){
+	const self = this;
 	if(typeof uriTemplate=='object' && options===undefined && matchValue===undefined){
 		var route = uriTemplate;
 		uriTemplate = route.uriTemplate;
@@ -357,7 +354,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 			for(var i=0; i<expression.length; i++){
 				var chr = expression[i];
 				// Descend node into the branch, creating it if it doesn't exist
-				node.match_chr[chr] = node.match_chr[chr] || new Node;
+				node.match_chr[chr] = node.match_chr[chr] || new Node(++self.nid);
 				node = node.match_chr[chr];
 				node.chr_offset = template_i;
 				template_i++;
@@ -373,22 +370,22 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 			setNext.push(node);
 		}
 		if(varspec.prefix){
-			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node;
+			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(++self.nid);
 			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 			node = node.match_pfx[varspec.prefix];
 		}
 		node.list_set = node.list_set || {};
-		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node;
+		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(++self.nid);
 		// Don't forget to sort!
 		node.list_set_keys = Object.keys(node.list_set);
 		node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
 		node = node.list_set[varspec.range];
 		node.match_range = varspec.range;
 		node.match_range_vindex = varspec.index;
-		node.list_repeat = node.list_repeat || new Node;
+		node.list_repeat = node.list_repeat || new Node(++self.nid);
 		node.list_repeat.match_pfx[varspec.separator] = node;
 		node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-		node.list_next = node.list_next || new Node;
+		node.list_next = node.list_next || new Node(++self.nid);
 		node = node.list_next;
 		setNext.forEach(function(n){
 			n.list_next = node;
@@ -398,7 +395,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	// Add EOF condition
 	{
 		var chr = 'undefined';
-		node.match_chr[chr] = node.match_chr[chr] || new Node;
+		node.match_chr[chr] = node.match_chr[chr] || new Node(++self.nid);
 		node = node.match_chr[chr];
 		node.chr_offset = template_i;
 		template_i++;
