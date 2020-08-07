@@ -1,0 +1,52 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" version="XHTML+RDFa 1.0" dir="ltr">
+<head>
+	<meta http-equiv="Content-Type" content="application/xhtml+xml;charset=utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Demo | URI Template Router</title>
+	<link rel="stylesheet" href="style.css"/>
+	<script type="application/ecmascript">
+		var module = {};
+		var exports = module.exports = {};
+		var process = {};
+	</script>
+	<script type="application/ecmascript" src="uri-template-router.bundle.js"></script>
+	<script type="application/ecmascript" src="demo.js"></script>
+</head>
+<body class="pagewidth">
+	<div class="site-header">
+		<header>
+			<ul>
+				<li><h1><a href="index.xhtml">URI Template Router</a></h1></li>
+				<li><a href="demo.xhtml">demo</a></li>
+				<li><a href="https://www.npmjs.com/package/uri-template-router">npm</a></li>
+				<li><a href="https://yarnpkg.com/package/uri-template-router">Yarn</a></li>
+				<li><a href="https://github.com/awwright/uri-template-router">GitHub</a></li>
+			</ul>
+		</header>
+	</div>
+	<main class="demo">
+
+		<h2>Demo/Playground</h2>
+
+		<h3>URI Template list</h3>
+		<p>List one per line</p>
+		<div><textarea id="templates">http://localhost/~{user}
+http://localhost/blog{/yyyy,mm,dd,slug}
+http://localhost/blog{/yyyy,mm,dd,slug}.md
+http://localhost/blog{/yyyy,mm,dd,slug}.html
+http://localhost/static{/path*}
+</textarea></div>
+		<div id="router-status">Ready</div>
+
+		<h3>URI to resolve</h3>
+		<div><input type="text" id="test" value="http://localhost/~root" /></div>
+
+		<hr/>
+
+		<h3>First match</h3>
+		<div><code id="result-template"></code></div>
+		<pre id="result-params"></pre>
+
+	</main>
+</body>
+</html>

@@ -5,3 +5,7 @@ root = true
 indent_style = tab
 indent_size = 3
 
+[*.xhtml]
+indent_style = tab
+indent_size = 3
+

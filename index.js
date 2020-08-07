@@ -209,7 +209,7 @@ function Variable(operatorChar, varname, explode, maxLength){
 }
 Variable.from = function(operatorChar, varspec){
 	if(!varspec.match(rule_varspec)){
-		throw new Error('Malformed expression '+JSON.stringify(varspec));
+		throw new Error('Malformed variable '+JSON.stringify(varspec));
 	}
 	const separator = operators[operatorChar];
 	// Test for explode operator
