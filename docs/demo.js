@@ -1,42 +1,49 @@
 var router;
 
 function refreshRouter(){
-    router = new Router;
-    var errors = [];
-    document.getElementById('templates').value.split('\n').forEach(function(v){
-	   const uriTemplate = v.trim();
-	   if(!uriTemplate) return;
-	   try {
+	router = new Router;
+	var errors = [];
+	document.getElementById('templates').value.split('\n').forEach(function(v){
+		const uriTemplate = v.trim();
+		if(!uriTemplate) return;
+		try {
 		  router.addTemplate(uriTemplate);
-	   }catch(err){
+		}catch(err){
 		  errors.push(err);
-	   }
-    });
-    if(errors.length){
-	   document.getElementById('router-status').textContent = errors.map(function(err){
+		}
+	});
+	if(errors.length){
+		document.getElementById('router-status').textContent = errors.map(function(err){
 		  return err.toString();
-	   }).join('\n');
-    }else{
-	   document.getElementById('router-status').textContent = router.routes.length + ' routes parsed';
-    }
+		}).join('\n');
+	}else{
+		document.getElementById('router-status').textContent = router.routes.length + ' routes parsed';
+	}
 }
 
 function refreshResults(){
-    if(!router) refreshRouter();
-    var input = document.getElementById('test').value;
-    var outTemplate = document.getElementById('result-template');
-    var outParams = document.getElementById('result-params');
-    var results = router.resolveURI(input);
-    var result = results;
-    if(result){
-	   outTemplate.textContent = '<'+result.template+'>'+(result.argument||'');
-	   outParams.textContent = Object.keys(result.params).map(function(v){
+	if(!router) refreshRouter();
+	var input = document.getElementById('test').value;
+	var outTemplate = document.getElementById('result-template');
+	var outParams = document.getElementById('result-params');
+	var results = router.resolveURI(input);
+	var result = results;
+	if(result){
+		outTemplate.textContent = '<'+result.template+'>'+(result.argument||'');
+		outParams.textContent = Object.keys(result.params).map(function(v){
 			return v + " = " + JSON.stringify(result.params[v], null, '\t');
 		}).join("\n");
-    }else{
-	   outTemplate.textContent = '';
-	   outParams.textContent = 'Not Found';
-    }
+	}else{
+		outTemplate.textContent = '';
+		outParams.textContent = 'Not Found';
+	 }
+	 var resultList = document.getElementById('result-list');
+	 resultList.textContent = '';
+	 for(var resultItem = result; resultItem; resultItem=resultItem.next()){
+		var li = document.createElement('li');
+		li.textContent = resultItem.template;
+		resultList.appendChild(li);
+	 }
 }
 
 function alot(){
