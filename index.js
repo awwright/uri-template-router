@@ -32,28 +32,32 @@ function getRangeMap(range){
 }
 var RANGES_MAP = {};
 Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
+function sortRanges(a, b){
+	return RANGES_MAP[a].length - RANGES_MAP[b].length;
+}
 
 function encodeURIComponent_v(v){
 	return encodeURIComponent(v).replace(/!/g, '%21');
 }
 
-function Operator(prefix, separator, range, named, form){
+function Operator(prefix, separator, delimiter, range, named, form){
 	this.prefix = prefix;
 	this.separator = separator;
+	this.delimiter = delimiter;
 	this.range = range;
 	this.named = named;
 	this.form = form;
 }
 
 const operators = {
-	'': new Operator('', ',', 'UNRESERVED', false),
-	'+': new Operator('', ',', 'RESERVED_UNRESERVED', false),
-	'#': new Operator('#', ',', 'RESERVED_UNRESERVED', false),
-	'.': new Operator('.', '.', 'UNRESERVED', false),
-	'/': new Operator('/', '/', 'UNRESERVED', false),
-	';': new Operator(';', ';', 'UNRESERVED', true, false),
-	'?': new Operator('?', '&', 'UNRESERVED', true, true),
-	'&': new Operator('&', '&', 'UNRESERVED', true, true),
+	'': new Operator( '',  ',', null, 'UNRESERVED', false),
+	'+': new Operator('',  ',', null, 'RESERVED_UNRESERVED', false),
+	'#': new Operator('#', ',', null, 'RESERVED_UNRESERVED', false),
+	'.': new Operator('.', '.', '.',  'UNRESERVED', false),
+	'/': new Operator('/', '/', '/',  'UNRESERVED', false),
+	';': new Operator(';', ';', ';',  'UNRESERVED', true, false),
+	'?': new Operator('?', '&', '&',  'UNRESERVED', true, true),
+	'&': new Operator('&', '&', '&',  'UNRESERVED', true, true),
 };
 
 function Router(){
@@ -157,6 +161,7 @@ function Expression(operatorChar, variableList, index){
 	this.operatorChar = operatorChar;
 	this.prefix = operators[operatorChar].prefix;
 	this.separator = operators[operatorChar].separator;
+	this.range = operators[operatorChar].range;
 	this.variableList = variableList;
 	this.index = index;
 }
@@ -204,6 +209,7 @@ function Variable(operatorChar, varname, explode, maxLength){
 	this.optional = true;
 	this.prefix = operator.prefix;
 	this.separator = operator.separator;
+	this.delimiter = operator.delimiter;
 	this.range = operator.range;
 	this.named = operator.named;
 }
@@ -377,8 +383,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		node.list_set = node.list_set || {};
 		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(++self.nid);
 		// Don't forget to sort!
-		node.list_set_keys = Object.keys(node.list_set);
-		node.list_set_keys.sort(function(a, b){ return RANGES_MAP[a].length - RANGES_MAP[b].length; });
+		node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
 		node = node.list_set[varspec.range];
 		node.match_range = varspec.range;
 		node.match_range_vindex = varspec.index;
