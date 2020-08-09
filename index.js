@@ -375,39 +375,38 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 				node.chr_offset = template_i;
 				template_i++;
 			}
-		}else{
-			expression.variableList.forEach(addPath);
+			return;
 		}
-	});
-	function addPath(varspec){
-		if(typeof varspec!=='object') throw new Error('Unknown type');
-		var setNext = [];
-		if(varspec.optional){
-			setNext.push(node);
-		}
-		if(varspec.prefix){
-			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(varspec.prefix, ++self.nid);
-			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-			node = node.match_pfx[varspec.prefix];
-		}
-		node.list_set = node.list_set || {};
-		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
-		node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
-		node = node.list_set[varspec.range];
-		node.match_range = varspec.range;
-		node.match_range_vindex = varspec.index;
-		if(varspec.delimiter){
-			node.list_repeat = node.list_repeat || new Node(varspec.delimiter, ++self.nid);
-			node.list_repeat.match_pfx[varspec.delimiter] = node;
-			node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-		}
-		node.list_next = node.list_next || new Node(undefined, ++self.nid);
-		node = node.list_next;
-		setNext.forEach(function(n){
-			n.list_next = node;
+		expression.variableList.forEach(function addPath(varspec){
+			if(typeof varspec!=='object') throw new Error('Unknown type');
+			var setNext = [];
+			if(varspec.optional){
+				setNext.push(node);
+			}
+			if(varspec.prefix){
+				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(varspec.prefix, ++self.nid);
+				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+				node = node.match_pfx[varspec.prefix];
+			}
+			node.list_set = node.list_set || {};
+			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
+			node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
+			node = node.list_set[varspec.range];
+			node.match_range = varspec.range;
+			node.match_range_vindex = varspec.index;
+			if(varspec.delimiter){
+				node.list_repeat = node.list_repeat || new Node(varspec.delimiter, ++self.nid);
+				node.list_repeat.match_pfx[varspec.delimiter] = node;
+				node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+			}
+			node.list_next = node.list_next || new Node(undefined, ++self.nid);
+			node = node.list_next;
+			setNext.forEach(function(n){
+				n.list_next = node;
+			});
+			template_i++;
 		});
-		template_i++;
-	}
+	});
 	// Add EOF condition
 	{
 		node.match_eof = node.match_eof || new Node(null, ++self.nid);
