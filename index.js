@@ -71,8 +71,6 @@ function Node(range, nid){
 	this.chr_offset = null;
 	// If we're currently in an expression
 	this.match_range = null;
-	this.list_repeat = null;
-	this.list_repeat_nid = null;
 	// If we reach this branch, declare a match for this template
 	this.template_match = null;
 
@@ -352,6 +350,7 @@ Object.defineProperty(Result.prototype, "name", {
 
 Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchValue){
 	const self = this;
+	const nodeMap = {};
 	if(typeof uriTemplate=='object' && options===undefined && matchValue===undefined){
 		var route = uriTemplate;
 		uriTemplate = route.uriTemplate;
@@ -387,17 +386,28 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(varspec.prefix, ++self.nid);
 				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 				node = node.match_pfx[varspec.prefix];
+				var prefixNode = node;
 			}
 			node.list_set = node.list_set || {};
 			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
 			node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
 			node = node.list_set[varspec.range];
+			var rangeNode = node;
 			node.match_range = varspec.range;
 			node.match_range_vindex = varspec.index;
-			if(varspec.delimiter){
-				node.list_repeat = node.list_repeat || new Node(varspec.delimiter, ++self.nid);
-				node.list_repeat.match_pfx[varspec.delimiter] = node;
-				node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+			if(varspec.explode){
+				node.match_pfx[varspec.delimiter] = node.match_pfx[varspec.delimiter] || new Node(varspec.delimiter, ++self.nid);
+				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+				var delimiterNode = node.match_pfx[varspec.delimiter];
+				nodeMap[delimiterNode.nid] = {
+					expression: expression,
+					varspec: varspec,
+					vpush: varspec.explode && varspec.index,
+				};
+				delimiterNode.list_set = delimiterNode.list_set || {};
+				delimiterNode.list_set[varspec.range] = rangeNode;
+				delimiterNode.list_set_keys = Object.keys(delimiterNode.list_set).sort(sortRanges);
+				setNext.push(delimiterNode);
 			}
 			node.list_next = node.list_next || new Node(undefined, ++self.nid);
 			node = node.list_next;
@@ -418,6 +428,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		throw new Error('Route already defined');
 	}
 	node.template_match = route;
+	node.template_nodes = nodeMap;
 	return route;
 };
 
@@ -431,6 +442,7 @@ var S = {
 for(var n in S) S[n]=n;
 
 // Some constants
+var MATCH_EOF = 'match_eof';
 var MATCH_CHR = 'match_chr';
 var MATCH_PFX = 'match_pfx';
 var MATCH_RANGE = 'match_range';
@@ -502,7 +514,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 
 		// EOF always matches first
 		if(chr===null && branch.match_eof){
-			append(state.match(branch.match_eof, S.CHR, MATCH_CHR, MATCH_SORT.MATCH_CHR));
+			append(state.match(branch.match_eof, S.CHR, MATCH_EOF, MATCH_SORT.MATCH_CHR));
 		}
 
 		// First try patterns with exact character matches
@@ -531,10 +543,6 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		// If the expression is optional, try skipping over it, too
 		if(branch.list_next){
 			consumeInputCharacter(offset, chr, state, branch.list_next).forEach(append);
-		}
-		if(branch.list_repeat){
-			// Push repeat parsing first before everything else (lowest priority)
-			consumeInputCharacter(offset, chr, state, branch.list_repeat).forEach(append);
 		}
 		return stack;
 	}
@@ -577,6 +585,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	function finish(solution){
 		var history = [];
 		var route = solution.branch.template_match;
+		var nodeMap = solution.branch.template_nodes;
 		for(var item=solution; item.prev; item=item.prev){
 			var branch = item.branch;
 			history.unshift({
@@ -587,6 +596,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				vpush: item.vpush,
 				node: branch,
 				nid: branch.nid,
+				transition: nodeMap[branch.nid],
 			});
 		}
 		var var_list = [];

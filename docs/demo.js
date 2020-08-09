@@ -47,8 +47,8 @@ function refreshResults(){
 	var nodeList=[router.tree], nodeSeen={}, graphSrc='';
 	nodeSeen[router.tree.nid] = true;
 	var node;
-	function add(target, label){
-		graphSrc += '\te'+node.nid+' -> e'+target.nid+' [label='+JSON.stringify(label||'')+'];\n';
+	function add(target, label, style){
+		graphSrc += '\te'+node.nid+' -> e'+target.nid+' [label='+JSON.stringify(label||'')+(style||'')+'];\n';
 		if(!nodeSeen[target.nid]){
 			nodeList.push(target);
 			nodeSeen[target.nid] = true;
@@ -63,8 +63,7 @@ function refreshResults(){
 		for(const k in node.list_set) add(node.list_set[k], k);
 		if(node.match_eof) add(node.match_eof, 'EOF');
 		if(node.match_range) add(node, node.range);
-		if(node.list_next) add(node.list_next, '↴');
-		if(node.list_repeat) add(node.list_repeat, '⟳');
+		if(node.list_next) add(node.list_next, '↴', ',style=dashed');
 		if(node.template_match){
 			graphSrc += '\tm'+node.nid+' [label='+JSON.stringify(node.template_match.uriTemplate)+',shape=rect];\n';
 			graphSrc += '\te'+node.nid+' -> m'+node.nid+' [label=match];\n';
