@@ -392,14 +392,15 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		}
 		node.list_set = node.list_set || {};
 		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
-		// Don't forget to sort!
 		node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
 		node = node.list_set[varspec.range];
 		node.match_range = varspec.range;
 		node.match_range_vindex = varspec.index;
-		node.list_repeat = node.list_repeat || new Node(varspec.delimiter, ++self.nid);
-		node.list_repeat.match_pfx[varspec.delimiter] = node;
-		node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+		if(varspec.delimiter){
+			node.list_repeat = node.list_repeat || new Node(varspec.delimiter, ++self.nid);
+			node.list_repeat.match_pfx[varspec.delimiter] = node;
+			node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
+		}
 		node.list_next = node.list_next || new Node(undefined, ++self.nid);
 		node = node.list_next;
 		setNext.forEach(function(n){
