@@ -371,6 +371,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 				// Descend node into the branch, creating it if it doesn't exist
 				node.match_chr[chr] = node.match_chr[chr] || new Node(chr, ++self.nid);
 				node = node.match_chr[chr];
+				nodeMap[node.nid] = {};
 				node.chr_offset = template_i;
 				template_i++;
 			}
@@ -384,8 +385,12 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 			}
 			if(varspec.prefix){
 				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(varspec.prefix, ++self.nid);
-				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 				node = node.match_pfx[varspec.prefix];
+				nodeMap[node.nid] = {
+					expression: expression,
+					varspec: varspec,
+					vpush: varspec.explode && varspec.index,
+				};
 				var prefixNode = node;
 			}
 			node.list_set = node.list_set || {};
@@ -393,11 +398,15 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 			node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
 			node = node.list_set[varspec.range];
 			var rangeNode = node;
+			nodeMap[node.nid] = {
+				expression: expression,
+				varspec: varspec,
+				vindex: varspec.index,
+			};
 			node.match_range = varspec.range;
 			node.match_range_vindex = varspec.index;
 			if(varspec.explode){
 				node.match_pfx[varspec.delimiter] = node.match_pfx[varspec.delimiter] || new Node(varspec.delimiter, ++self.nid);
-				node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 				var delimiterNode = node.match_pfx[varspec.delimiter];
 				nodeMap[delimiterNode.nid] = {
 					expression: expression,
@@ -458,7 +467,7 @@ var MATCH_SORT = {
 	},
 };
 
-function State(prev, offset, branch, mode, type, sort, vpush, vindex){
+function State(prev, offset, branch, mode, type, sort){
 	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
 	if(prev && (offset !== prev.offset+1)) throw new Error('out-of-order state history, expected '+(prev.offset+1)+' got '+offset);
 	if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
@@ -477,13 +486,9 @@ function State(prev, offset, branch, mode, type, sort, vpush, vindex){
 	this.sort = sort;
 	// The order the match was inserted into the tree, e.g. in case an expression is skipped, prefer the earlier matched one
 	this.weight = 0;
-	// If an expression prefix is being matched, and needs to be pushed onto an array, which expression
-	this.vpush = vpush;
-	// If a variable is being matched, which expression
-	this.vindex = vindex;
 }
-State.prototype.match = function match(branch, mode, type, sort, vpush, vindex){
-	return new State(this, this.offset+1, branch, mode, type, sort, vpush, vindex);
+State.prototype.match = function match(branch, mode, type, sort){
+	return new State(this, this.offset+1, branch, mode, type, sort);
 };
 
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
@@ -524,7 +529,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 
 		// If the match_pfx isn't matched, then skip over the following match_range too...
 		if(branch.match_pfx[chr]){
-			append(state.match(branch.match_pfx[chr], S.CHR, MATCH_PFX, MATCH_SORT.MATCH_PFX, branch.match_pfx_vpush, undefined));
+			append(state.match(branch.match_pfx[chr], S.CHR, MATCH_PFX, MATCH_SORT.MATCH_PFX));
 		}
 
 		// Then try patterns with range matches
@@ -537,7 +542,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 			const validRange = RANGES_MAP[branch.match_range];
 			if(chr in validRange || chr==='%'){
 				const sort = MATCH_SORT.MATCH_RANGE[branch.match_range];
-				append(state.match(branch, S.CHR, MATCH_RANGE, sort, undefined, branch.match_range_vindex));
+				append(state.match(branch, S.CHR, MATCH_RANGE, sort));
 			}
 		}
 		// If the expression is optional, try skipping over it, too
@@ -592,8 +597,8 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				chr: uri[item.prev.offset],
 				offset: item.prev.offset,
 				type: item.type,
-				vindex: item.vindex,
-				vpush: item.vpush,
+				vindex: nodeMap[branch.nid] && nodeMap[branch.nid].vindex,
+				vpush: nodeMap[branch.nid] && nodeMap[branch.nid].vpush,
 				node: branch,
 				nid: branch.nid,
 				transition: nodeMap[branch.nid],
