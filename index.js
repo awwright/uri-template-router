@@ -2,11 +2,6 @@
 
 module.exports.Router = Router;
 
-// var routeDebug = process.argv && process.argv.indexOf('-v')>=0;
-function log(){
-	// if(routeDebug) console.log.apply(console, arguments);
-}
-
 var RANGES = {
 	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
 	RESERVED_UNRESERVED: ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~'],
@@ -534,11 +529,9 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		}
 		// If the expression is optional, try skipping over it, too
 		if(branch.list_next){
-			log(' list_next', branch.list_next.nid);
 			consumeInputCharacter(offset, chr, state, branch.list_next).forEach(append);
 		}
 		if(branch.list_repeat){
-			log(' +list_repeat', branch.list_repeat.nid);
 			// Push repeat parsing first before everything else (lowest priority)
 			consumeInputCharacter(offset, chr, state, branch.list_repeat).forEach(append);
 		}
@@ -546,7 +539,6 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	}
 	for(var offset = 0;;){
 		var state = parse_backtrack.shift();
-		//log(stateset_this);
 		if(!state) break;
 		offset = state.offset;
 		if(offset > uri.length) throw new Error('Overgrew offset');
@@ -566,7 +558,6 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				.map(function(v){ return finish(v); });
 			if(solutions.length>1){
 				return solutions[0];
-				//log(solutions);
 				//throw new Error('Multiple equal templates matched');
 			}else if(solutions.length==1){
 				return solutions[0];
@@ -585,7 +576,6 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	function matchedExpressions(solution){
 		var history = [];
 		for(var item=solution; item.prev; item=item.prev){
-			//log(item.offset);
 			var branch = item.branch;
 			history.unshift({
 				chr: uri[item.prev.offset],
