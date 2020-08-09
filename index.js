@@ -63,13 +63,15 @@ const operators = {
 function Router(){
 	this.routes = [];
 	this.nid = 0;
-	this.tree = new Node(++this.nid);
+	this.tree = new Node(null, ++this.nid);
 }
 
 // A node on the tree is a list of various options to try to match against an input character.
 // The "next" and "list_set" options specify another branch to also try and match against the current input character.
 // The "template_match" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
-function Node(nid){
+function Node(range, nid){
+	if(range && range.length>1 && !RANGES_MAP[range]) throw new Error('Unknown range '+range);
+	this.range = range;
 	this.nid = nid;
 	this.chr_offset = null;
 	// If we're currently in an expression
@@ -91,6 +93,18 @@ function Node(nid){
 	this.list_next = null;
 	this.list_skp = null;
 	this.list_skp_nid = null;
+}
+Node.prototype.test = function test(chr){
+	if(this.range===undefined){
+		// Undefined matches everything
+		return true;
+	}else if(this.range===null || this.range.length===1){
+		return chr===this.range;
+	}else if(this.range.length > 1){
+		if(!RANGES_MAP[this.range]) throw new Error('Unknown range '+this.range);
+		return (chr in RANGES_MAP[this.range]);
+	}
+
 }
 Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
@@ -360,7 +374,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 			for(var i=0; i<expression.length; i++){
 				var chr = expression[i];
 				// Descend node into the branch, creating it if it doesn't exist
-				node.match_chr[chr] = node.match_chr[chr] || new Node(++self.nid);
+				node.match_chr[chr] = node.match_chr[chr] || new Node(chr, ++self.nid);
 				node = node.match_chr[chr];
 				node.chr_offset = template_i;
 				template_i++;
@@ -376,21 +390,21 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 			setNext.push(node);
 		}
 		if(varspec.prefix){
-			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(++self.nid);
+			node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(varspec.prefix, ++self.nid);
 			node.match_pfx_vpush = varspec.explode?varspec.index:undefined;
 			node = node.match_pfx[varspec.prefix];
 		}
 		node.list_set = node.list_set || {};
-		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(++self.nid);
+		node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
 		// Don't forget to sort!
 		node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
 		node = node.list_set[varspec.range];
 		node.match_range = varspec.range;
 		node.match_range_vindex = varspec.index;
-		node.list_repeat = node.list_repeat || new Node(++self.nid);
-		node.list_repeat.match_pfx[varspec.separator] = node;
+		node.list_repeat = node.list_repeat || new Node(varspec.delimiter, ++self.nid);
+		node.list_repeat.match_pfx[varspec.delimiter] = node;
 		node.list_repeat.match_pfx_vpush = varspec.explode?varspec.index:undefined;
-		node.list_next = node.list_next || new Node(++self.nid);
+		node.list_next = node.list_next || new Node(undefined, ++self.nid);
 		node = node.list_next;
 		setNext.forEach(function(n){
 			n.list_next = node;
@@ -399,9 +413,8 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	}
 	// Add EOF condition
 	{
-		var chr = 'undefined';
-		node.match_chr[chr] = node.match_chr[chr] || new Node(++self.nid);
-		node = node.match_chr[chr];
+		node.match_eof = node.match_eof || new Node(null, ++self.nid);
+		node = node.match_eof;
 		node.chr_offset = template_i;
 		template_i++;
 	}
@@ -491,6 +504,11 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 			stack.push(v);
 		}
 
+		// EOF always matches first
+		if(chr===null && branch.match_eof){
+			append(state.match(branch.match_eof, S.CHR, MATCH_CHR, MATCH_SORT.MATCH_CHR));
+		}
+
 		// First try patterns with exact character matches
 		if(branch.match_chr[chr]){
 			append(state.match(branch.match_chr[chr], S.CHR, MATCH_CHR, MATCH_SORT.MATCH_CHR));
@@ -531,11 +549,10 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		//log(stateset_this);
 		if(!state) break;
 		offset = state.offset;
-		if(offset > uri.length) continue;
-		//if(offset > uri.length) throw new Error('Overgrew offset');
+		if(offset > uri.length) throw new Error('Overgrew offset');
 		// This will set chr===undefined for the EOF position
 		// We could also use another value like "\0" or similar to represent EOF
-		var chr = uri[offset];
+		var chr = (offset<uri.length) ? uri[offset] : null;
 		if(chr=='%' && chr[offset+1] && chr[offset+2]){
 			chr += chr[offset+1] && chr[offset+2];
 			if(!chr.match(/^%[0-9A-F]{2}$/)) throw new Error('Invalid pct-encoded character');
@@ -576,13 +593,14 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				type: item.type,
 				vindex: item.vindex,
 				vpush: item.vpush,
+				node: branch,
 				nid: branch.nid,
 			});
 		}
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
-			var chr = item.chr || '';
+			var chr = item.chr || null;
 			if(item.vpush!==undefined){
 				var_list[item.vpush] = var_list[item.vpush] || [];
 				var_list[item.vpush].push('');
