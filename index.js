@@ -316,7 +316,7 @@ Variable.prototype.expand = function(params){
 };
 
 module.exports.Result = Result;
-function Result(router, uri, options, route, params, remaining_state){
+function Result(router, uri, options, route, params, remaining_state, history){
 	this.router = router;
 	this.uri = uri;
 	this.options = options;
@@ -325,6 +325,7 @@ function Result(router, uri, options, route, params, remaining_state){
 	this.matchValue = route.matchValue;
 	this.params = params;
 	this.remaining_state = remaining_state;
+	this.history = history;
 }
 
 Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
@@ -573,8 +574,9 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		stack.forEach(function(v){ if(v.type==MATCH_RANGE) parse_backtrack.push(v); });
 	}
 
-	function matchedExpressions(solution){
+	function finish(solution){
 		var history = [];
+		var route = solution.branch.template_match;
 		for(var item=solution; item.prev; item=item.prev){
 			var branch = item.branch;
 			history.unshift({
@@ -603,16 +605,10 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 				}
 			}
 		}
-		return var_list;
-	}
-
-	function finish(solution){
-		var var_list = matchedExpressions(solution);
-		var route = solution.branch.template_match;
 		var bindings = {};
 		route.variables.forEach(function(v){
 			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
 		});
-		return new Result(self, uri, flags, route, bindings, parse_backtrack);
+		return new Result(self, uri, flags, route, bindings, parse_backtrack, history);
 	}
 };
