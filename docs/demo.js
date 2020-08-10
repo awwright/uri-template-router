@@ -63,7 +63,7 @@ function refreshResults(){
 		for(const k in node.list_set) add(node.list_set[k], k);
 		if(node.match_eof) add(node.match_eof, 'EOF');
 		if(node.match_range) add(node, node.range);
-		if(node.list_next) add(node.list_next, '↴', ',style=dashed');
+		if(node.list_next) add(node.list_next, '', ',style=dashed');
 		if(node.template_match){
 			graphSrc += '\tm'+node.nid+' [label='+JSON.stringify(node.template_match.uriTemplate)+',shape=rect];\n';
 			graphSrc += '\te'+node.nid+' -> m'+node.nid+' [label=match];\n';
@@ -108,9 +108,13 @@ function alot(){
 }
 
 window.onload = function(){
-	document.getElementById('templates').onchange = refreshRouter;
+	document.getElementById('templates').onchange = function(){
+		refreshRouter();
+		refreshResults();
+	};
 	document.getElementById('test').onchange = refreshResults;
 	document.getElementById('test').onkeyup = refreshResults;
+	refreshRouter();
 	refreshResults();
 }
 
