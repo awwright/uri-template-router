@@ -618,6 +618,9 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
 			var item = history[item_i];
+			if(item.chr && !item.node.test(item.chr)){
+				throw new Error('Assert: Node range '+item.node.range+' mismatches character['+item_i+'] '+item.chr);
+			}
 			var chr = item.chr || null;
 			if(item.vpush!==undefined){
 				var_list[item.vpush] = var_list[item.vpush] || [];
