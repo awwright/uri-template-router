@@ -22,7 +22,7 @@ function CharacterRange(label, ranges){
 }
 CharacterRange.prototype.toString = function toString(){
 	return '['+this.label+']';
-}
+};
 
 const RANGE_UNRESERVED = new CharacterRange('UNRESERVED', ['-.', '09', 'AZ', '_', 'az', '~']);
 const RANGE_RESERVED_UNRESERVED = new CharacterRange('RESERVED_UNRESERVED', ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~']);
@@ -103,7 +103,7 @@ Node.prototype.test = function test(chr){
 		return this.range.test(chr);
 	}
 
-}
+};
 Node.prototype.toString = function toString(){
 	return '[Node '+this.nid+']';
 };
@@ -167,7 +167,7 @@ Route.prototype.gen = function Route_gen(params){
 };
 Route.prototype.toString = function toString(params){
 	return this.tokens.map( (v)=>v.toString(params) ).join('');
-}
+};
 
 module.exports.Expression = Expression;
 function Expression(operatorChar, variableList, index){
@@ -407,7 +407,7 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 					varspec: varspec,
 					vpush: varspec.explode && varspec.index,
 				};
-				var prefixNode = node;
+				//var prefixNode = node;
 			}
 			node.list_set = node.list_set || {};
 			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
@@ -615,7 +615,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		}
 		var var_list = [];
 		for(var item_i=0; item_i<history.length; item_i++){
-			var item = history[item_i];
+			const item = history[item_i];
 			if(item.chr && !item.node.test(item.chr)){
 				throw new Error('Assert: Node range '+item.node.range+' mismatches character['+item_i+'] '+item.chr);
 			}
