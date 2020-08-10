@@ -7,7 +7,7 @@ Match a URI to an [RFC 6570 URI template](https://tools.ietf.org/html/rfc6570) f
 * Returns the best match, regardless of insertion order
 * Scales to any number of templates/patterns to test against
 * Supports repeating expressions using explode modifier
-* Routes store an associated "matchValue" argument for storing arbritrary values (including objects or functions)
+* Routes store an associated "matchValue" argument for storing arbitrary values (including objects or functions)
 * State machine evaluation can be resumed if the returned match isn't good (e.g. if first match wasn't in the database)
 
 ## Example
@@ -133,20 +133,9 @@ All URI Template expressions that can be reversed should be supported:
 * `{?var}` — consumes a leading query start `?`
 * `{&var}` — consumes a leading ampersand `&`
 
-Some array forms are supported, where the parser will try to match multiple times, pushing each match into an array:
-
-* `{#var+}` — consumes a leading fragment start `#`
-* `{.var+}` — consumes a leading dot `.`
-* `{/var+}` — consumes a leading slash `/`
-* `{;var+}` — consumes a leading semicolon `;`
-* `{?var+}` — consumes a leading query start `?`, subsequent items consume an ampersand `&`
-* `{&var+}` — consumes a leading ampersand `&`
-
-In all cases, the parser tries to match the next character in the template before reading the character into the current variable.
-
 ### Repeating matches
 
-Some types of expressions can be matched more than once and provided as array items:
+When used with the explode modifier `*`, the parser will try to match the variable multiple times, returning an array:
 
 ```javascript
 router.addTemplate('http://localhost/~{user}{/path*}');
@@ -155,6 +144,14 @@ assert(result.params.user === 'root');
 assert(result.params.path[0] === 'about');
 assert(result.params.path[1] === 'me.txt');
 ```
+
+The following operators are supported:
+
+* `{.var*}` — consumes a leading dot `.`
+* `{/var*}` — consumes a leading slash `/`
+* `{;var*}` — consumes a leading semicolon `;`
+* `{?var*}` — consumes a leading query start `?`, subsequent items consume an ampersand `&`
+* `{&var*}` — consumes a leading ampersand `&`
 
 
 ## API
