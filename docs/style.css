@@ -1,21 +1,25 @@
 * {
-    box-sizing: border-box;
+	box-sizing: border-box;
+}
+textarea, input {
+	background: transparent;
+	color: inherit;
 }
 
 html, body {
-    max-width: 60em;
-    margin: 0 auto;
+	max-width: 60em;
+	margin: 0 auto;
 }
 
 h2 {
-    padding-bottom: 0.3em;
-    font-size: 1.5em;
-    border-bottom: 1px solid #eaecef;
+	padding-bottom: 0.3em;
+	font-size: 1.5em;
+	border-bottom: 1px solid #eaecef;
 }
 
 header {
-    background-color: rgba(128,128,128,0.1);
-    border-bottom: rgba(128,128,128,0.5) solid 2px;
+	background-color: rgba(128,128,128,0.1);
+	border-bottom: rgba(128,128,128,0.5) solid 2px;
 }
 header:after { content: ""; display: table; clear: both; }
 header ul {
@@ -37,7 +41,7 @@ header ul li h1 {
 }
 
 header ul li > * {
-    display: block;
+	display: block;
 	margin: 1em 0.3em;
 }
 
@@ -46,13 +50,68 @@ header ul li :link {
 	color: black;
 }
 
+footer {
+	background: rgba(128,128,128,0.1);
+	border-top: rgba(128,128,128,0.3) solid 1px;
+	padding: 1em;
+	text-align: right;
+	margin-top: 6em;
+}
+
+footer a[rel="prev"] {
+	display: block;
+	float: left;
+}
+footer a[rel="prev"]::before {
+	content: "☚ ";
+}
+footer a[rel="next"] {
+	display: block;
+}
+footer a[rel="next"]::after {
+	content: " ☛";
+}
+footer::after {
+	display: table-cell;
+	content: "";
+	clear: both;
+}
+
+/* main styles */
+
+pre {
+	background: rgba(128,128,128,0.1);
+	border: rgba(128,128,128,0.3) solid 1px;
+	padding: 1em 0 1em 1em;
+	tab-size: 3;
+	-moz-tab-size: 3;
+}
+
 /* Demo styles */
 
 textarea, input {
-    width: 100%;
+	width: 100%;
 }
 #templates {
-    min-height: 15em;
+	min-height: 15em;
 }
 #result {
+}
+
+
+@media (prefers-color-scheme: dark) {
+	body {
+		background: black;
+		color: white;
+	}
+	h2 {
+		border-bottom: 1px solid #585858;
+	}
+	a, :link {
+		color: #7b7beb;
+	}
+	header ul li a,
+	header ul li :link {
+		color: white;
+	}
 }

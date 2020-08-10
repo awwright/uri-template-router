@@ -1,0 +1,61 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" version="XHTML+RDFa 1.0" dir="ltr">
+<head>
+	<meta http-equiv="Content-Type" content="application/xhtml+xml;charset=utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Demo | URI Template Router</title>
+	<link rel="stylesheet" href="style.css"/>
+	<link rel="prev" href="index.xhtml"/>
+	<link rel="next" href="api.xhtml"/>
+</head>
+<body class="pagewidth">
+	<div class="site-header">
+		<header>
+			<ul>
+				<li><h1><a href="index.xhtml">URI Template Router</a></h1></li>
+				<li class="active"><a href="usage.xhtml">Usage</a></li>
+				<li><a href="api.xhtml">API</a></li>
+				<li><a href="demo.xhtml">demo</a></li>
+				<li><a href="https://www.npmjs.com/package/uri-template-router">npm</a></li>
+				<li><a href="https://yarnpkg.com/package/uri-template-router">Yarn</a></li>
+				<li><a href="https://github.com/awwright/uri-template-router">GitHub</a></li>
+			</ul>
+		</header>
+	</div>
+	<main>
+		<h2>Usage</h2>
+
+		<section id="usage-route">
+			<h3>URI Template Expansion</h3>
+			<p>The <a href="api.xhtml#api-route">Route</a> class may be used to generate a URI template and expand it into a full URI.</p>
+			<pre>
+const route = new Route('http://localhost/blog{/yyyy,mm,dd,slug}');
+console.log(route.toString({yyyy:'1999', mm:'10', dd:'30', slug:'homesteading-the-noosphere'}));
+// Output: "http://localhost/blog/1999/10/30/homesteading-the-noosphere"
+</pre>
+			<p>The full feature set of <a href="https://tools.ietf.org/html/rfc6570">RFC 6570 URI templates</a> is available for use, including substrings and all the operators.</p>
+		</section>
+
+		<section id="usage-router">
+			<h3>Routing a set of URI Templates</h3>
+			<p>The <a href="api.xhtml#api-router">Router</a> interface collects multiple Route instances, and can route a URI to the closest matching Route, as well as the parameters that can be used to fill it to reproduce the given URI.</p>
+			<pre>
+const router = new Router;
+const routes = {
+	blog: router.addRoute('http://localhost/blog{/yyyy,mm,dd,slug}'),
+	page: router.addRoute('http://localhost{/page}'),
+	file: router.addRoute('http://localhost/static{/path}'),
+	png: router.addRoute('http://localhost/static{/path}.png'),
+	css: router.addRoute('http://localhost/static{/path}.css'),
+	js: router.addRoute('http://localhost/static{/path}.js'),
+};
+</pre>
+				
+		</section>
+
+	</main>
+	<footer>
+		<a rel="prev" href="index.xhtml">Previous: Introduction</a>
+		<a rel="next" href="api.xhtml">Next: API</a>
+	</footer>
+</body>
+</html>

@@ -4,10 +4,10 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>Demo | URI Template Router</title>
 	<link rel="stylesheet" href="style.css"/>
+	<link rel="prev" href="api.xhtml"/>
 	<script type="application/ecmascript">
-		var module = {};
-		var exports = module.exports = {};
-		var process = {};
+		var module = {exports: {}};
+		var exports = module.exports;
 	</script>
 	<script type="application/ecmascript" src="uri-template-router.bundle.js"></script>
 	<script type="application/ecmascript" src="demo.js"></script>
@@ -17,6 +17,8 @@
 		<header>
 			<ul>
 				<li><h1><a href="index.xhtml">URI Template Router</a></h1></li>
+				<li><a href="usage.xhtml">Usage</a></li>
+				<li><a href="api.xhtml">API</a></li>
 				<li class="active"><a href="demo.xhtml">demo</a></li>
 				<li><a href="https://www.npmjs.com/package/uri-template-router">npm</a></li>
 				<li><a href="https://yarnpkg.com/package/uri-template-router">Yarn</a></li>
@@ -53,5 +55,8 @@ http://localhost/static{/path*}
 		<h3>Evaluation tree</h3>
 		<pre id="result-graph"></pre>
 	</main>
+	<footer>
+		<a rel="prev" href="api.xhtml">Previous: API</a>
+	</footer>
 </body>
 </html>

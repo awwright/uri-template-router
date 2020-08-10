@@ -1,0 +1,99 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" version="XHTML+RDFa 1.0" dir="ltr">
+<head>
+	<meta http-equiv="Content-Type" content="application/xhtml+xml;charset=utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Demo | URI Template Router</title>
+	<link rel="stylesheet" href="style.css"/>
+	<link rel="prev" href="usage.xhtml"/>
+	<link rel="next" href="demo.xhtml"/>
+</head>
+<body class="pagewidth">
+	<div class="site-header">
+		<header>
+			<ul>
+				<li><h1><a href="index.xhtml">URI Template Router</a></h1></li>
+				<li><a href="usage.xhtml">Usage</a></li>
+				<li class="active"><a href="api.xhtml">API</a></li>
+				<li><a href="demo.xhtml">demo</a></li>
+				<li><a href="https://www.npmjs.com/package/uri-template-router">npm</a></li>
+				<li><a href="https://yarnpkg.com/package/uri-template-router">Yarn</a></li>
+				<li><a href="https://github.com/awwright/uri-template-router">GitHub</a></li>
+			</ul>
+		</header>
+	</div>
+	<main>
+		<h2>API</h2>
+
+		<section id="api-router">
+			<h3>Router</h3>
+			<p></p>
+		</section>
+
+		<section id="api-route">
+			<h3>Route</h3>
+			<p>A <code>Route</code> identifies a single URI Template. It can be inserted into a <code>Router</code>, or can be supplied data to expand into a full URI.</p>
+		</section>
+
+		<section id="api-expression">
+			<h3>Expression</h3>
+			<p>An <code>Expression</code>. It carries the following properties:</p>
+			<dl>
+				<dt><code>operatorChar</code></dt>
+				<dd>The operator character opening the expression, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
+
+				<dt><code>prefix</code></dt>
+				<dd></dd>
+
+				<dt><code>separator</code></dt>
+				<dd></dd>
+
+				<dt><code>range</code></dt>
+				<dd></dd>
+
+				<dt><code>variableList</code></dt>
+				<dd></dd>
+
+				<dt><code>index</code></dt>
+				<dd></dd>
+			</dl>
+		</section>
+
+		<section id="api-router">
+			<h3>Variable</h3>
+			<p></p>
+		</section>
+		
+		<section id="api-result">
+			<h3>Result</h3>
+			<p></p>
+			<dl>
+				<dt><code>router</code></dt>
+				<dd>The <code>Router</code> associated with this result.</dd>
+
+				<dt><code>uri</code></dt>
+				<dd>The URI that the resolve was called with.</dd>
+
+				<dt><code>options</code></dt>
+				<dd></dd>
+
+				<dt><code>route</code></dt>
+				<dd>The <code>Route</code> that was matched.</dd>
+
+				<dt><code>uriTemplate</code></dt>
+				<dd>The URI Template that was matched, shortcut for <code>Result#route.template</code></dd>
+
+				<dt><code>matchValue</code></dt>
+				<dd>The <code>matchValue</code> property stored with the Route.</dd>
+
+				<dt><code>params</code></dt>
+				<dd>An object of the matched parameters/variables.</dd>
+			</dl>
+		</section>
+
+	</main>
+	<footer>
+		<a rel="prev" href="usage.xhtml">Previous: Usage</a>
+		<a rel="next" href="demo.xhtml">Next: Demo</a>
+	</footer>
+</body>
+</html>
