@@ -2,33 +2,38 @@
 
 module.exports.Router = Router;
 
-var RANGES = {
-	UNRESERVED: ['-.', '09', 'AZ', '_', 'az', '~'],
-	RESERVED_UNRESERVED: ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~'],
-	QUERY: [
-		'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
-		"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
-		':', '@', // colon and at-sign (from pchar)
-		'/', '?', // and slash and question-mark
-	],
-};
-function getRangeMap(range){
-	var validMap = {};
-	range.forEach(function(chr){
+function CharacterRange(label, ranges){
+	this.label = label;
+	const set = this.set = new Set;
+	ranges.forEach(function(chr){
 		if(chr.length==1){
-			validMap[chr] = null;
+			set.add(chr);
 		}else if(chr.length==2){
 			for(var i=chr.charCodeAt(0), end=chr.charCodeAt(1); i<=end; i++){
-				validMap[String.fromCharCode(i)] = null;
+				set.add(String.fromCharCode(i));
 			}
 		}
 	});
-	return validMap;
+
 }
-var RANGES_MAP = {};
-Object.keys(RANGES).forEach(function(name){ RANGES_MAP[name] = getRangeMap(RANGES[name]); });
+CharacterRange.prototype.toString = function toString(){
+	return '['+this.label+']';
+}
+CharacterRange.prototype.test = function test(chr){
+	return this.set.has(chr);
+}
+
+const RANGE_UNRESERVED = new CharacterRange('UNRESERVED', ['-.', '09', 'AZ', '_', 'az', '~']);
+const RANGE_RESERVED_UNRESERVED = new CharacterRange('RESERVED_UNRESERVED', ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~']);
+const RANGE_QUERY = new CharacterRange('QUERY', [
+	'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
+	"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
+	':', '@', // colon and at-sign (from pchar)
+	'/', '?', // and slash and question-mark
+]);
+
 function sortRanges(a, b){
-	return RANGES_MAP[a].length - RANGES_MAP[b].length;
+	return a.set.size - b.set.size;
 }
 
 function encodeURIComponent_v(v){
@@ -42,17 +47,18 @@ function Operator(prefix, separator, delimiter, range, named, form){
 	this.range = range;
 	this.named = named;
 	this.form = form;
+	this.encode = (range===RANGE_RESERVED_UNRESERVED) ? encodeURI : encodeURIComponent_v;
 }
 
 const operators = {
-	'': new Operator( '',  ',', null, 'UNRESERVED', false),
-	'+': new Operator('',  ',', null, 'RESERVED_UNRESERVED', false),
-	'#': new Operator('#', ',', null, 'RESERVED_UNRESERVED', false),
-	'.': new Operator('.', '.', '.',  'UNRESERVED', false),
-	'/': new Operator('/', '/', '/',  'UNRESERVED', false),
-	';': new Operator(';', ';', ';',  'UNRESERVED', true, false),
-	'?': new Operator('?', '&', '&',  'UNRESERVED', true, true),
-	'&': new Operator('&', '&', '&',  'UNRESERVED', true, true),
+	'': new Operator( '',  ',', null, RANGE_UNRESERVED, false),
+	'+': new Operator('',  ',', null, RANGE_RESERVED_UNRESERVED, false),
+	'#': new Operator('#', ',', null, RANGE_RESERVED_UNRESERVED, false),
+	'.': new Operator('.', '.', '.',  RANGE_UNRESERVED, false),
+	'/': new Operator('/', '/', '/',  RANGE_UNRESERVED, false),
+	';': new Operator(';', ';', ';',  RANGE_UNRESERVED, true, false),
+	'?': new Operator('?', '&', '&',  RANGE_UNRESERVED, true, true),
+	'&': new Operator('&', '&', '&',  RANGE_UNRESERVED, true, true),
 };
 
 function Router(){
@@ -65,7 +71,6 @@ function Router(){
 // The "next" and "list_set" options specify another branch to also try and match against the current input character.
 // The "template_match" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
 function Node(range, nid){
-	if(range && range.length>1 && !RANGES_MAP[range]) throw new Error('Unknown range '+range);
 	this.range = range;
 	this.nid = nid;
 	this.chr_offset = null;
@@ -91,11 +96,10 @@ Node.prototype.test = function test(chr){
 	if(this.range===undefined){
 		// Undefined matches everything
 		return true;
-	}else if(this.range===null || this.range.length===1){
+	}else if(this.range===null || typeof this.range==='string'){
 		return chr===this.range;
-	}else if(this.range.length > 1){
-		if(!RANGES_MAP[this.range]) throw new Error('Unknown range '+this.range);
-		return (chr in RANGES_MAP[this.range]);
+	}else if(this.range && this.range.test){
+		return this.range.test(chr);
 	}
 
 }
@@ -258,8 +262,8 @@ Variable.prototype.toString = function(params){
 Variable.prototype.expand = function(params){
 	const t = this;
 	const op = operators[t.operatorChar];
-	var varvalue = params[t.varname];
-	var encode = (op.range==='RESERVED_UNRESERVED') ? encodeURI : encodeURIComponent_v ;
+	const varvalue = params[t.varname];
+	const encode = op.encode;
 	if(typeof varvalue=='string' || typeof varvalue=='number'){
 		var value = varvalue;
 		if(t.maxLength) value = value.substring(0, t.maxLength);
@@ -549,12 +553,8 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(append);
 		}
 
-		if(branch.match_range){
-			const validRange = RANGES_MAP[branch.match_range];
-			if(chr in validRange || chr==='%'){
-				const sort = MATCH_SORT.MATCH_RANGE[branch.match_range];
-				append(state.match(branch, S.CHR, MATCH_RANGE, sort));
-			}
+		if(branch.match_range && branch.match_range.test(chr)){
+			append(state.match(branch, S.CHR, MATCH_RANGE, branch.match_range.set.size));
 		}
 		// If the expression is optional, try skipping over it, too
 		if(branch.list_next){

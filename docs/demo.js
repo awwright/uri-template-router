@@ -60,9 +60,9 @@ function refreshResults(){
 		graphSrc += '\te'+node.nid+' [label='+JSON.stringify(node.nid+' '+node.range)+'];\n';
 		for(const k in node.match_chr) add(node.match_chr[k]);
 		for(const k in node.match_pfx) add(node.match_pfx[k], k);
-		for(const k in node.list_set) add(node.list_set[k], k);
+		for(const k in node.list_set) add(node.list_set[k], k, ',style=dashed');
 		if(node.match_eof) add(node.match_eof, 'EOF');
-		if(node.match_range) add(node, node.range);
+		if(node.match_range) add(node, node.range.label);
 		if(node.list_next) add(node.list_next, '', ',style=dashed');
 		if(node.template_match){
 			graphSrc += '\tm'+node.nid+' [label='+JSON.stringify(node.template_match.uriTemplate)+',shape=rect];\n';
