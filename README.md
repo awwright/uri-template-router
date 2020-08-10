@@ -26,7 +26,7 @@ r.resolveURI('http://example.com/');
 {
   pattern: 'http://example.com/',
   matchValue: 'index',
-  data: undefined,
+  params: undefined,
 }
 
 r.resolveURI('http://example.com/qfoo.txt');
@@ -34,7 +34,7 @@ r.resolveURI('http://example.com/qfoo.txt');
 {
   pattern: 'http://example.com/q{n}.txt',
   matchValue: 'page_txt',
-  data: { n: 'foo' },
+  params: { n: 'foo' },
 }
 
 r.resolveURI('http://example.com/q123.html');
@@ -42,7 +42,7 @@ r.resolveURI('http://example.com/q123.html');
 {
   pattern: 'http://example.com/q{n}.html',
   matchValue: 'page_html',
-  data: { n: '123' },
+  params: { n: '123' },
 }
 
 r.resolveURI('http://example.com/blog/2010/01/02/inventing-the-wheel');
