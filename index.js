@@ -4,7 +4,7 @@ module.exports.Router = Router;
 
 function CharacterRange(label, ranges){
 	this.label = label;
-	const set = this.set = new Set;
+	const set = new Set;
 	ranges.forEach(function(chr){
 		if(chr.length==1){
 			set.add(chr);
@@ -14,13 +14,14 @@ function CharacterRange(label, ranges){
 			}
 		}
 	});
-
+	this.test = function test(chr){
+		if(chr && chr[0]==='%' && chr.match(/^%[0-9A-F]{2}$/)) return true;
+		return set.has(chr);
+	};
+	this.sortSize = set.size;
 }
 CharacterRange.prototype.toString = function toString(){
 	return '['+this.label+']';
-}
-CharacterRange.prototype.test = function test(chr){
-	return this.set.has(chr);
 }
 
 const RANGE_UNRESERVED = new CharacterRange('UNRESERVED', ['-.', '09', 'AZ', '_', 'az', '~']);
@@ -33,7 +34,7 @@ const RANGE_QUERY = new CharacterRange('QUERY', [
 ]);
 
 function sortRanges(a, b){
-	return a.set.size - b.set.size;
+	return a.sortSize - b.sortSize;
 }
 
 function encodeURIComponent_v(v){
@@ -125,11 +126,11 @@ function Route(uriTemplate, options, matchValue){
 	for(var uri_i=0; uri_i<uriTemplate.length; uri_i++){
 		var chr = uriTemplate[uri_i];
 		if(chr==='%'){
-			if(uriTemplate.substring(uri_i, uri_i+2).match(/^%[0-9A-F]{2}$/)){
+			if(uriTemplate.substring(uri_i, uri_i+3).match(/^%[0-9A-F]{2}$/)){
 				chr += uriTemplate[uri_i+1] + uriTemplate[uri_i+2];
 				uri_i += 2;
 			}else{
-				throw new Error('Invalid pct-encoded sequence');
+				throw new Error('Invalid pct-encoded sequence '+JSON.stringify(uriTemplate.substring(uri_i, uri_i+3)));
 			}
 		}
 		if(chr=='{'){
@@ -482,9 +483,9 @@ var MATCH_SORT = {
 	},
 };
 
-function State(prev, offset, branch, mode, type, sort){
+function State(prev, offset, branch, chr, type, sort){
 	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
-	if(prev && (offset !== prev.offset+1)) throw new Error('out-of-order state history, expected '+(prev.offset+1)+' got '+offset);
+	if(prev && (offset <= prev.offset)) throw new Error('out-of-order state history, expected '+(prev.offset+1)+' got '+offset);
 	if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 	if(typeof sort!=='number') throw new Error('Expected `sort` to be a number');
 	// The state at the previous character
@@ -493,8 +494,8 @@ function State(prev, offset, branch, mode, type, sort){
 	this.offset = offset;
 	// Branch of the tree the match made found on
 	this.branch = branch;
-	// The type of character being consumed (CHR, PCT1, etc.)
-	this.mode = mode;
+	// The character(s) being consumed
+	this.chr = chr;
 	// The type of match that was made (match_pfx, etc.)
 	this.type = type;
 	// The sort order of the match that was made
@@ -502,9 +503,6 @@ function State(prev, offset, branch, mode, type, sort){
 	// The order the match was inserted into the tree, e.g. in case an expression is skipped, prefer the earlier matched one
 	this.weight = 0;
 }
-State.prototype.match = function match(branch, mode, type, sort){
-	return new State(this, this.offset+1, branch, mode, type, sort);
-};
 
 // Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
 // Process:
@@ -523,42 +521,42 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 	if(initial_state){
 		var parse_backtrack = initial_state.slice();
 	}else{
-		parse_backtrack = [new State(null, 0, this.tree, S.CHR, MATCH_CHR, MATCH_SORT.INIT, null)];
+		parse_backtrack = [new State(null, 0, this.tree, '', MATCH_CHR, MATCH_SORT.INIT, null)];
 	}
 	function consumeInputCharacter(offset, chr, state, branch){
 		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
 		const stack = [];
-		function append(v){
-			stack.push(v);
+		function match(branch, type, sort){
+			stack.push(new State(state, offset+1, branch, chr, type, sort));
 		}
 
 		// EOF always matches first
 		if(chr===null && branch.match_eof){
-			append(state.match(branch.match_eof, S.CHR, MATCH_EOF, MATCH_SORT.MATCH_CHR));
+			match(branch.match_eof, MATCH_EOF, MATCH_SORT.MATCH_CHR);
 		}
 
 		// First try patterns with exact character matches
 		if(branch.match_chr[chr]){
-			append(state.match(branch.match_chr[chr], S.CHR, MATCH_CHR, MATCH_SORT.MATCH_CHR));
+			match(branch.match_chr[chr], MATCH_CHR, MATCH_SORT.MATCH_CHR);
 		}
 
 		// If the match_pfx isn't matched, then skip over the following match_range too...
 		if(branch.match_pfx[chr]){
-			append(state.match(branch.match_pfx[chr], S.CHR, MATCH_PFX, MATCH_SORT.MATCH_PFX));
+			match(branch.match_pfx[chr], MATCH_PFX, MATCH_SORT.MATCH_PFX);
 		}
 
 		// Then try patterns with range matches
 		for(var i=0; i<branch.list_set_keys.length; i++){
 			const rangeName = branch.list_set_keys[i];
-			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(append);
+			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(stack.push.bind(stack));
 		}
 
 		if(branch.match_range && branch.match_range.test(chr)){
-			append(state.match(branch, S.CHR, MATCH_RANGE, branch.match_range.set.size));
+			match(branch, MATCH_RANGE, branch.match_range.sortSize);
 		}
 		// If the expression is optional, try skipping over it, too
 		if(branch.list_next){
-			consumeInputCharacter(offset, chr, state, branch.list_next).forEach(append);
+			consumeInputCharacter(offset, chr, state, branch.list_next).forEach(stack.push.bind(stack));
 		}
 		return stack;
 	}
@@ -605,7 +603,7 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		for(var item=solution; item.prev; item=item.prev){
 			var branch = item.branch;
 			history.unshift({
-				chr: uri[item.prev.offset],
+				chr: item.chr,
 				offset: item.prev.offset,
 				type: item.type,
 				vindex: nodeMap[branch.nid] && nodeMap[branch.nid].vindex,
@@ -636,7 +634,9 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		}
 		var bindings = {};
 		route.variables.forEach(function(v){
-			if(var_list[v.index]!==undefined) bindings[v.varname] = var_list[v.index];
+			if(var_list[v.index]!==undefined){
+				bindings[v.varname] = Array.isArray(var_list[v.index]) ? var_list[v.index].map(decodeURIComponent) : decodeURIComponent(var_list[v.index]) ;
+			}
 		});
 		return new Result(self, uri, flags, route, bindings, parse_backtrack, history);
 	}
