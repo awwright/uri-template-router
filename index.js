@@ -120,6 +120,14 @@ function Route(uriTemplate, options, matchValue){
 	var expressionList = [];
 	for(var uri_i=0; uri_i<uriTemplate.length; uri_i++){
 		var chr = uriTemplate[uri_i];
+		if(chr==='%'){
+			if(uriTemplate.substring(uri_i, uri_i+2).match(/^%[0-9A-F]{2}$/)){
+				chr += uriTemplate[uri_i+1] + uriTemplate[uri_i+2];
+				uri_i += 2;
+			}else{
+				throw new Error('Invalid pct-encoded sequence');
+			}
+		}
 		if(chr=='{'){
 			var endpos = uriTemplate.indexOf('}', uri_i+2);
 			if(endpos<0) throw new Error('Unclosed expression: Expected "}" but found end of template');
@@ -141,8 +149,6 @@ function Route(uriTemplate, options, matchValue){
 			expressionList.push(expression);
 			tokens.push(expression);
 		}else if(chr.match(rule_literals)){
-			// Decend node into the branch, creating it if it doesn't exist
-			// if chr is undefined, this will set the key "undefined"
 			if(typeof tokens[tokens.length-1]=='string') tokens[tokens.length-1] += chr;
 			else tokens.push(chr);
 		}else{
@@ -368,6 +374,11 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		if(typeof expression=='string'){
 			for(var i=0; i<expression.length; i++){
 				var chr = expression[i];
+				if(chr==='%' && expression[i+1] && expression[i+2]){
+					chr += expression[i+1] + expression[i+2];
+					if(!chr.match(/^%[0-9A-F]{2}$/)) throw new Error('Assert: Invalid pct-encoded character');
+					i += 2;
+				}
 				// Descend node into the branch, creating it if it doesn't exist
 				node.match_chr[chr] = node.match_chr[chr] || new Node(chr, ++self.nid);
 				node = node.match_chr[chr];
@@ -559,8 +570,8 @@ Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
 		// This will set chr===undefined for the EOF position
 		// We could also use another value like "\0" or similar to represent EOF
 		var chr = (offset<uri.length) ? uri[offset] : null;
-		if(chr=='%' && chr[offset+1] && chr[offset+2]){
-			chr += chr[offset+1] && chr[offset+2];
+		if(chr=='%' && uri[offset+1] && uri[offset+2]){
+			chr += uri[offset+1] + uri[offset+2];
 			if(!chr.match(/^%[0-9A-F]{2}$/)) throw new Error('Invalid pct-encoded character');
 			offset += 2;
 		}
