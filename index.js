@@ -66,7 +66,16 @@ function Router(){
 	this.routes = [];
 	this.nid = 0;
 	this.tree = new Node(null, ++this.nid);
+	this.valueRouteMap = new Map;
 }
+
+Router.prototype.getValue = function getValue(matchValue){
+	return this.valueRouteMap.get(matchValue);
+};
+
+Router.prototype.hasValue = function hasValue(matchValue){
+	return this.valueRouteMap.has(matchValue);
+};
 
 // A node on the tree is a list of various options to try to match against an input character.
 // The "next" and "list_set" options specify another branch to also try and match against the current input character.
@@ -370,7 +379,6 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	}else{
 		route = new Route(uriTemplate, options, matchValue);
 	}
-	this.routes.push(route);
 
 	// Iterate over tokens in route to add the route to the tree
 	var node = this.tree;
@@ -454,6 +462,11 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	}
 	node.template_match = route;
 	node.template_nodes = nodeMap;
+
+	this.routes.push(route);
+	if(!this.valueRouteMap.has(matchValue)){
+		this.valueRouteMap.set(matchValue, route);
+	}
 	return route;
 };
 
