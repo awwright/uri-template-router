@@ -27,11 +27,43 @@
 		<section id="api-router">
 			<h3>Router</h3>
 			<p></p>
+			<dl>
+				<dt><code>clear()</code></dt>
+				<dd>Reset the Router to have zero entries.</dd>
+
+				<dt><code>hasRoute(route)</code></dt>
+				<dd>Test if the router has the specified <code>Route</code>.</dd>
+
+				<dt><code>size</code></dt>
+				<dd>The number of routes in the Router.</dd>
+
+				<dt><code>getTemplate(uriTemplate)</code></dt>
+				<dd>Get the <code>Route</code> in the Router that has the given <code>uriTemplate</code>.</dd>
+
+				<dt><code>hasTemplate(uriTemplate)</code></dt>
+				<dd>Test if the router has a <code>Route</code> with the given <code>uriTemplate</code>.</dd>
+
+				<dt><code>getValue(matchValue)</code></dt>
+				<dd>Get the <code>Route</code> in the Router that has the given <code>matchValue</code>.</dd>
+
+				<dt><code>hasValue(matchValue)</code></dt>
+				<dd>Test if the router has a <code>Route</code> with the given <code>matchValue</code>.</dd>
+			</dl>
 		</section>
 
 		<section id="api-route">
 			<h3>Route</h3>
 			<p>A <code>Route</code> identifies a single URI Template. It can be inserted into a <code>Router</code>, or can be supplied data to expand into a full URI.</p>
+			<dl>
+				<dt><code>uriTemplate</code></dt>
+				<dd>The operator character opening the expression, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
+
+				<dt><code>matchValue</code></dt>
+				<dd>The operator character opening the expression, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
+
+				<dt><code>toString(params)</code></dt>
+				<dd>Returns a string of the URI Template, expanded with the given <code>params</code>.</dd>
+			</dl>
 		</section>
 
 		<section id="api-expression">

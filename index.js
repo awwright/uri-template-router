@@ -83,10 +83,12 @@ Object.defineProperty(Router.prototype, "size", {
 });
 
 Router.prototype.getTemplate = function getTemplate(uriTemplate){
+	if(typeof uriTemplate !== 'string') throw new Error('Expected string `uriTemplate`');
 	return this.templateRouteMap.get(uriTemplate);
 };
 
 Router.prototype.hasTemplate = function hasTemplate(uriTemplate){
+	if(typeof uriTemplate !== 'string') throw new Error('Expected string `uriTemplate`');
 	return this.templateRouteMap.has(uriTemplate);
 };
 

@@ -52,7 +52,7 @@ header ul li :link {
 
 footer {
 	background: rgba(128,128,128,0.1);
-	border-top: rgba(128,128,128,0.3) solid 1px;
+	border-top: rgba(128,128,128,0.3) solid 2px;
 	padding: 1em;
 	text-align: right;
 	margin-top: 6em;
@@ -67,12 +67,13 @@ footer a[rel="prev"]::before {
 }
 footer a[rel="next"] {
 	display: block;
+	float: right;
 }
 footer a[rel="next"]::after {
 	content: " ☛";
 }
 footer::after {
-	display: table-cell;
+	display: table;
 	content: "";
 	clear: both;
 }
