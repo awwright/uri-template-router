@@ -17,7 +17,7 @@ function refreshRouter(){
 			return err.toString();
 		}).join('\n');
 	}else{
-		document.getElementById('router-status').textContent = router.routes.length + ' routes parsed';
+		document.getElementById('router-status').textContent = router.size + ' routes parsed';
 	}
 }
 
