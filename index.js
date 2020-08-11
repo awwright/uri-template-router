@@ -63,11 +63,32 @@ const operators = {
 };
 
 function Router(){
-	this.routes = [];
+	this.clear();
+}
+
+Router.prototype.clear = function clear(){
 	this.nid = 0;
 	this.tree = new Node(null, ++this.nid);
+	this.routeSet = new Set;
+	this.templateRouteMap = new Map;
 	this.valueRouteMap = new Map;
-}
+};
+
+Router.prototype.hasRoute = function hasRoute(route){
+	return this.routeSet.has(route);
+};
+
+Object.defineProperty(Router.prototype, "size", {
+	get: function sizeGet(){ return this.routeSet.size; },
+});
+
+Router.prototype.getTemplate = function getTemplate(uriTemplate){
+	return this.templateRouteMap.get(uriTemplate);
+};
+
+Router.prototype.hasTemplate = function hasTemplate(uriTemplate){
+	return this.templateRouteMap.has(uriTemplate);
+};
 
 Router.prototype.getValue = function getValue(matchValue){
 	return this.valueRouteMap.get(matchValue);
@@ -463,7 +484,8 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	node.template_match = route;
 	node.template_nodes = nodeMap;
 
-	this.routes.push(route);
+	this.routeSet.add(route);
+	this.templateRouteMap.set(uriTemplate, route);
 	if(!this.valueRouteMap.has(matchValue)){
 		this.valueRouteMap.set(matchValue, route);
 	}
