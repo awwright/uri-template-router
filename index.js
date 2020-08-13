@@ -82,6 +82,10 @@ Object.defineProperty(Router.prototype, "size", {
 	get: function sizeGet(){ return this.routeSet.size; },
 });
 
+Object.defineProperty(Router.prototype, "routes", {
+	get: function routesGet(){ return Array.from(this.routeSet); },
+});
+
 Router.prototype.getTemplate = function getTemplate(uriTemplate){
 	if(typeof uriTemplate !== 'string') throw new Error('Expected string `uriTemplate`');
 	return this.templateRouteMap.get(uriTemplate);
