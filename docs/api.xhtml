@@ -44,7 +44,7 @@
 				<dd>Test if the router has a <code>Route</code> with the given <code>uriTemplate</code>.</dd>
 
 				<dt><code>getValue(matchValue)</code></dt>
-				<dd>Get the <code>Route</code> in the Router that has the given <code>matchValue</code>.</dd>
+				<dd>Get the <code>Route</code> in the Router that has the given <code>matchValue</code>. This only maps the initial first value of <code>Route#matchValue</code>, it will not update if is changed directly, or if a duplicate value is inserted.</dd>
 
 				<dt><code>hasValue(matchValue)</code></dt>
 				<dd>Test if the router has a <code>Route</code> with the given <code>matchValue</code>.</dd>
@@ -68,31 +68,60 @@
 
 		<section id="api-expression">
 			<h3>Expression</h3>
-			<p>An <code>Expression</code>. It carries the following properties:</p>
+			<p>An expression within a URI Template. Instances carry the following properties:</p>
 			<dl>
 				<dt><code>operatorChar</code></dt>
 				<dd>The operator character opening the expression, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
 
 				<dt><code>prefix</code></dt>
-				<dd></dd>
+				<dd>The leading character that will be output if one of the variables is defined.</dd>
 
 				<dt><code>separator</code></dt>
-				<dd></dd>
+				<dd>The character that will separate defined variables in the expression, if there are multiple.</dd>
 
 				<dt><code>range</code></dt>
-				<dd></dd>
+				<dd>The set of ASCII characters that will pass through without escaping.</dd>
 
 				<dt><code>variableList</code></dt>
-				<dd></dd>
-
-				<dt><code>index</code></dt>
-				<dd></dd>
+				<dd>An Array of <code>Variable</code> instances.</dd>
 			</dl>
 		</section>
 
 		<section id="api-router">
 			<h3>Variable</h3>
-			<p></p>
+			<p>A variable inside an expression. Instances carry the following properties:</p>
+			<dl>
+				<dt><code>operatorChar</code></dt>
+				<dd>The operator character opening the expression the variable is in, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
+
+				<dt><code>varname</code></dt>
+				<dd>The name of the variable. Does not include the operator or modifiers.</dd>
+
+				<dt><code>explode</code></dt>
+				<dd>Boolean indicating the presence of an explode modifier.</dd>
+
+				<dt><code>maxLength</code></dt>
+				<dd>A number indicating the value of the "prefix" modifier, if one is supplied.</dd>
+
+				<dt><code>optional</code></dt>
+				<dd>A boolean indicating if this variable can be skipped when parsing a URI.</dd>
+
+				<dt><code>prefix</code></dt>
+				<dd>The leading character that begins the expression, if one of the variables is defined.</dd>
+
+				<dt><code>separator</code></dt>
+				<dd>The character that will separate this variable, if defined, from other defined variables.</dd>
+
+				<dt><code>delimiter</code></dt>
+				<dd>Like the separator, but only for characters used to delimit new values during reading.</dd>
+
+				<dt><code>range</code></dt>
+				<dd>The set of ASCII characters that will pass through without escaping.</dd>
+
+				<dt><code>named</code></dt>
+				<dd>Boolean indicating if the variable name will be printed before the value.</dd>
+			</dl>
+
 		</section>
 		
 		<section id="api-result">
@@ -106,7 +135,7 @@
 				<dd>The URI that the resolve was called with.</dd>
 
 				<dt><code>options</code></dt>
-				<dd></dd>
+				<dd>(No function at present.)</dd>
 
 				<dt><code>route</code></dt>
 				<dd>The <code>Route</code> that was matched.</dd>

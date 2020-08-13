@@ -48,6 +48,24 @@ const routes = {
 	css: router.addRoute('http://localhost/static{/path}.css'),
 	js: router.addRoute('http://localhost/static{/path}.js'),
 };
+console.log(routes.page.toString({ page: 'about' }));
+</pre>
+
+		</section>
+
+		<section id="usage-router">
+			<h3>Using the matchValue property to name routes</h3>
+			<p>The <code>Route#getValue</code> method may be used to retrieve a <code>Route</code> that has a given <code>matchValue</code>. This allows you to use the property as a name:</p>
+			<pre>
+const router = new Router;
+router.addRoute('http://localhost/blog{/yyyy,mm,dd,slug}', {}, 'blog'),
+router.addRoute('http://localhost{/page}', {}, 'page'),
+router.addRoute('http://localhost/static{/path}', {}, 'file'),
+router.addRoute('http://localhost/static{/path}.png', {}, 'png'),
+router.addRoute('http://localhost/static{/path}.css', {}, 'css'),
+router.addRoute('http://localhost/static{/path}.js', {}, 'js'),
+
+console.log(router.getValue('page').toString({ page: 'about' }));
 </pre>
 				
 		</section>
