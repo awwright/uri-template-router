@@ -26,12 +26,12 @@ CharacterRange.prototype.toString = function toString(){
 
 const RANGE_UNRESERVED = new CharacterRange('UNRESERVED', ['-.', '09', 'AZ', '_', 'az', '~']);
 const RANGE_RESERVED_UNRESERVED = new CharacterRange('RESERVED_UNRESERVED', ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~']);
-const RANGE_QUERY = new CharacterRange('QUERY', [
-	'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
-	"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
-	':', '@', // colon and at-sign (from pchar)
-	'/', '?', // and slash and question-mark
-]);
+// const RANGE_QUERY = new CharacterRange('QUERY', [
+// 	'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
+// 	"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
+// 	':', '@', // colon and at-sign (from pchar)
+// 	'/', '?', // and slash and question-mark
+// ]);
 
 function sortRanges(a, b){
 	return a.sortSize - b.sortSize;
@@ -302,7 +302,7 @@ Variable.prototype.expand = function(params){
 	const varvalue = params[t.varname];
 	const encode = op.encode;
 	if(typeof varvalue=='string' || typeof varvalue=='number'){
-		var value = varvalue;
+		let value = varvalue;
 		if(t.maxLength) value = value.substring(0, t.maxLength);
 		if(op.named){
 			if(op.form || value) return t.varname + '=' + encode(value);
@@ -323,7 +323,7 @@ Variable.prototype.expand = function(params){
 			});
 			return items.length ? items.join(t.separator) : null;
 		}else{
-			var value = varvalue;
+			let value = varvalue;
 			if(t.maxLength) value = value.substring(0, t.maxLength);
 			if(value.length===0) return null;
 			if(op.named){
