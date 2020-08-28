@@ -545,18 +545,25 @@ function State(prev, offset, branch, chr, type, sort){
 	this.weight = 0;
 }
 
-// Let StateSet = ( int offset, pointer tier, Set<Branch> equal_alternatives )
-// Process:
-// Let parse_backtrack be a queue of sets of branches
-// Let parse_next and stateset_this be a set of branches
-// For each character in input:
-// Set stateset_this = parse_next, and re-initialize parse_next
-// For each state in stateset_this:
-//   If there's expressions to potentially match, push the set of them as a single item front of parse_backtrack
-//   Try to match next character of input to next literal in template. Push all matches onto parse_next queue.
-//   If parse_next is empty, set it to the next item popped off of parse_backtrack
+// like resolveString, but additionally verify that the URI matches the legal HTTP form
+// userinfo and fragment components are not allowed
+// Router.prototype.resolveRequest = function resolveRequest(scheme, host, target, flags, initial_state){
+// };
 
-Router.prototype.resolveURI = function resolve(uri, flags, initial_state){
+// like resolveString, but additionally verify that the URI matches the legal HTTP form
+// userinfo and fragment components are not allowed
+Router.prototype.resolveRequestURI = function resolveRequestURI(uri, flags, initial_state){
+	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
+	// First verify the URI looks OK, save the components, then parse it normally
+	// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+	const scheme_m = uri.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+	if(!scheme_m) throw new Error('parseURI: `uri` missing valid scheme');
+	// URI appears to be valid, now resolve it normally
+	return this.resolveURI(uri, flags, initial_state);
+};
+
+// TODO rename this to `resolveString`
+Router.prototype.resolveURI = function resolveString(uri, flags, initial_state){
 	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
 	var self = this;
 	if(initial_state){
