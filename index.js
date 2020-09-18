@@ -204,6 +204,9 @@ Route.prototype.gen = function Route_gen(params){
 Route.prototype.toString = function toString(params){
 	return this.tokens.map( (v)=>v.toString(params) ).join('');
 };
+Route.prototype.toJSON = function toJSON(){
+	return this.uriTemplate;
+};
 
 module.exports.Expression = Expression;
 function Expression(operatorChar, variableList, index){
