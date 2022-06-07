@@ -1,3 +1,5 @@
+const { Router } = uriTemplateRouter;
+
 var router;
 
 function refreshRouter(){
@@ -44,34 +46,7 @@ function refreshResults(){
 		li.textContent = resultItem.template + ' ⟵ ' + JSON.stringify(resultItem.params);
 		resultList.appendChild(li);
 	}
-	var nodeList=[router.tree], nodeSeen={}, graphSrc='';
-	nodeSeen[router.tree.nid] = true;
-	var node;
-	function add(target, label, style){
-		graphSrc += '\te'+node.nid+' -> e'+target.nid+' [label='+JSON.stringify(label||'')+(style||'')+'];\n';
-		if(!nodeSeen[target.nid]){
-			nodeList.push(target);
-			nodeSeen[target.nid] = true;
-		}
-	}
-	graphSrc += 'digraph G {\n';
-	while(nodeList.length){
-		node = nodeList.shift();
-		graphSrc += '\te'+node.nid+' [label='+JSON.stringify(node.nid+' '+node.range)+'];\n';
-		for(const k in node.match_chr) add(node.match_chr[k]);
-		for(const k in node.match_pfx) add(node.match_pfx[k], k);
-		for(const k in node.list_set) add(node.list_set[k], k, ',style=dashed');
-		if(node.match_eof) add(node.match_eof, 'EOF');
-		if(node.match_range) add(node, node.range.label);
-		if(node.list_next) add(node.list_next, '', ',style=dashed');
-		if(node.template_match){
-			graphSrc += '\tm'+node.nid+' [label='+JSON.stringify(node.template_match.uriTemplate)+',shape=rect];\n';
-			graphSrc += '\te'+node.nid+' -> m'+node.nid+' [label=match];\n';
-		}
-	}
-	graphSrc += '}\n';
-	console.log(router.tree);
-	document.getElementById('result-graph').textContent = graphSrc;
+	document.getElementById('result-graph').textContent = toViz(router.states);
 }
 
 function alot(){
@@ -102,9 +77,45 @@ function alot(){
 		return copy;
 	}, ['']);
 	patterns.forEach(function(template){
+		console.log(template);
 		router.addTemplate(template);
 	});
 	console.log('Added '+patterns.length+' templates');
+}
+
+function toViz(transitions, history){
+	var highlight = new Set();
+	if(history){
+		var start = 0;
+		history.forEach(function(node){
+			highlight.add(`${start} ${node.symbol} ${node.nextStateId}`);
+			start = node.nextStateId;
+		});
+	}
+	var str = '';
+	str += 'digraph G {\n';
+	str += '\t_initial [shape=point];\n';
+	str += '\t_initial -> 0;\n';
+	transitions.forEach(function(state, id){
+		const final = state.final ? ' [shape=doublecircle]' : '';
+		str += '\t'+id+final+';\n';
+		for(const symbol in state.transitions){
+			const target = state.transitions[symbol];
+			const penwidth = highlight.has(`${id} ${symbol} ${target}`) ? ',penwidth=3' : '' ;
+			str += '\t'+id+' -> '+target+' [label='+JSON.stringify(symbol)+penwidth+'];\n';
+		}
+		if(state.final && Array.isArray(state.final)) state.final.forEach(function(final){
+			str += '\t'+JSON.stringify('final_'+final)+' [shape='+JSON.stringify('doublebox')+',label='+JSON.stringify(final.toString())+'];\n';
+			str += '\t'+id+' -> '+JSON.stringify('final_'+final)+' [dir=both,arrowtail=odot,arrowhead=o];\n';
+		});
+		// if(state.partials) for(const k in state.partials){
+		// 	const partial = state.partials[k];
+		// 	str += '\t'+JSON.stringify('final_'+k)+' [shape='+JSON.stringify('doublebox')+',label='+JSON.stringify(k+JSON.stringify(partial))+'];\n';
+		// 	str += '\t'+id+' -> '+JSON.stringify('final_'+k)+' [dir=both,arrowtail=odot,arrowhead=o,style=dashed];\n';
+		// };
+	});
+	str += '}\n';
+	return str;
 }
 
 window.onload = function(){

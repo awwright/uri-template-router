@@ -13,7 +13,7 @@ describe('Router', function(){
 		const r = new Router;
 		const route = r.addTemplate('http://localhost/~{name}', {}, 'foo');
 		const m = r.resolveURI('http://localhost/~root');
-		assert.strictEqual(m.route, route)
+		assert.strictEqual(m.route, route);
 	});
 	it('Router#size', function(){
 		const r = new Router;

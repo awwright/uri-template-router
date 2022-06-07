@@ -9,9 +9,7 @@ test -f docs/index.xhtml || exit 1
 set -e
 git worktree add --detach $BUILDDIR master
 pushd $BUILDDIR
-pushd docs
-cp ../index.js uri-template-router.bundle.js
-popd
+make
 git add -f docs/
 BUILD_ID=$(git commit-tree -p master -m 'gh-pages build' $(git write-tree))
 popd

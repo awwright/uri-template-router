@@ -2,39 +2,31 @@
 
 module.exports.Router = Router;
 
-function CharacterRange(label, ranges){
-	this.label = label;
-	const set = new Set;
-	ranges.forEach(function(chr){
-		if(chr.length==1){
-			set.add(chr);
-		}else if(chr.length==2){
-			for(var i=chr.charCodeAt(0), end=chr.charCodeAt(1); i<=end; i++){
-				set.add(String.fromCharCode(i));
-			}
-		}
-	});
-	this.test = function test(chr){
-		if(chr && chr[0]==='%' && chr.match(/^%[0-9A-F]{2}$/)) return true;
-		return set.has(chr);
-	};
-	this.sortSize = set.size;
+const { Node, union, concat, optional, star, fromString } = require('./lib/fsm.js');
+
+const RANGE = {};
+RANGE.UNRES = ['-', '.', '0-9', 'A-Z', '_', 'a-z', '~'].join('');
+RANGE.GEN_D = [':', '/', '?', '#', '[', ']', '@'].join('');
+RANGE.SUB_D = ['!', '$', '&', "'", '(', ')', '*', '+', ',', ';', '='].join('');
+RANGE.RESER = [RANGE.GEN_D, RANGE.SUB_D].join('');
+RANGE.URI = [RANGE.UNRES, RANGE.RESER].join('');
+
+const regex_sc = /[.*+?^${}()|[\]\\]/g;
+function regex_escape(str){
+	return str.replace(regex_sc, '\\$&');
 }
-CharacterRange.prototype.toString = function toString(){
-	return '['+this.label+']';
-};
 
-const RANGE_UNRESERVED = new CharacterRange('UNRESERVED', ['-.', '09', 'AZ', '_', 'az', '~']);
-const RANGE_RESERVED_UNRESERVED = new CharacterRange('RESERVED_UNRESERVED', ['#', '&', '()', '*;', '=', '?[', ']', '_', 'az', '~']);
-// const RANGE_QUERY = new CharacterRange('QUERY', [
-// 	'AZ', 'az', '09', "-", ".", "_", "~", // unreserved (from pchar)
-// 	"!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "=", // sub-delims (from pchar)
-// 	':', '@', // colon and at-sign (from pchar)
-// 	'/', '?', // and slash and question-mark
-// ]);
+const regex_rangesc = /[\\\]]/g;
+function range_regex(str){
+	return '(?:['+str.replace(regex_rangesc, '\\$&')+']|%[0-9A-Fa-f]{2})';
+}
 
-function sortRanges(a, b){
-	return a.sortSize - b.sortSize;
+function range_fsm(str, uriTemplate, offset){
+	return optional([
+		new Node({[str]: 0, '%': 1}, {[uriTemplate]: new PartialMatch(offset, Value)}, true),
+		new Node({'0-9A-Fa-f': 2}, {[uriTemplate]: new PartialMatch(offset, Value)}, false),
+		new Node({'0-9A-Fa-f': 0}, {[uriTemplate]: new PartialMatch(offset, Value)}, false),
+	]);
 }
 
 function encodeURIComponent_v(v){
@@ -48,19 +40,37 @@ function Operator(prefix, separator, delimiter, range, named, form){
 	this.range = range;
 	this.named = named;
 	this.form = form;
-	this.encode = (range===RANGE_RESERVED_UNRESERVED) ? encodeURI : encodeURIComponent_v;
+	this.encode = (range===RANGE.URI) ? encodeURI_literal : encodeURIComponent_v;
 }
 
 const operators = {
-	'': new Operator( '',  ',', null, RANGE_UNRESERVED, false),
-	'+': new Operator('',  ',', null, RANGE_RESERVED_UNRESERVED, false),
-	'#': new Operator('#', ',', null, RANGE_RESERVED_UNRESERVED, false),
-	'.': new Operator('.', '.', '.',  RANGE_UNRESERVED, false),
-	'/': new Operator('/', '/', '/',  RANGE_UNRESERVED, false),
-	';': new Operator(';', ';', ';',  RANGE_UNRESERVED, true, false),
-	'?': new Operator('?', '&', '&',  RANGE_UNRESERVED, true, true),
-	'&': new Operator('&', '&', '&',  RANGE_UNRESERVED, true, true),
+	'': new Operator( '',  ',', null, RANGE.UNRES, false),
+	'+': new Operator('',  ',', null, RANGE.URI, false),
+	'#': new Operator('#', ',', null, RANGE.URI, false),
+	'.': new Operator('.', '.', '.',  RANGE.UNRES, false),
+	'/': new Operator('/', '/', '/',  RANGE.UNRES, false),
+	';': new Operator(';', ';', ';',  RANGE.UNRES, true, false),
+	'?': new Operator('?', '&', '&',  RANGE.UNRES, true, true),
+	'&': new Operator('&', '&', '&',  RANGE.UNRES, true, true),
 };
+
+// This technique works only because the 2-3rd characters in pct-encoding are also legal characters by themselves
+encodeURI_literal.pattern = new RegExp('[^'+RANGE.URI.replace(regex_rangesc, '\\$&')+'%'+']|%(?![0-9A-Fa-f]{2})', 'ug');
+function encodeURI_literal(v){
+	return v.replace(encodeURI_literal.pattern, function(a){
+		return encodeURIComponent(a);
+	});
+}
+
+function Operator(prefix, separator, delimiter, range, named, form){
+	this.prefix = prefix;
+	this.separator = separator;
+	this.delimiter = delimiter;
+	this.range = range;
+	this.named = named;
+	this.form = form;
+	this.encode = (range===RANGE.URI) ? encodeURI_literal : encodeURIComponent_v;
+}
 
 function Router(){
 	this.clear();
@@ -68,7 +78,7 @@ function Router(){
 
 Router.prototype.clear = function clear(){
 	this.nid = 0;
-	this.tree = new Node(null, ++this.nid);
+	this.states = [];
 	this.routeSet = new Set;
 	this.templateRouteMap = new Map;
 	this.valueRouteMap = new Map;
@@ -104,44 +114,26 @@ Router.prototype.hasValue = function hasValue(matchValue){
 	return this.valueRouteMap.has(matchValue);
 };
 
-// A node on the tree is a list of various options to try to match against an input character.
-// The "next" and "list_set" options specify another branch to also try and match against the current input character.
-// The "template_match" option specifies the end of the template was reached, and to return a successful match result. This is usually only reachable immediately after matching an EOF.
-function Node(range, nid){
-	this.range = range;
-	this.nid = nid;
-	this.chr_offset = null;
-	// If we're currently in an expression
-	this.match_range = null;
-	// If we reach this branch, declare a match for this template
-	this.template_match = null;
+const Literal = ('Literal');
+// const Prefix = ('Prefix');
+const Value = ('Value');
 
-	// Literal characters to match
-	this.match_chr = {};
-	// Expression prefixes to match
-	this.match_pfx = {};
-	// Alternative sets to try matching at the same time
-	this.list_set = {};
-	// The keys have an order, keep track of the order here
-	this.list_set_keys = [];
-	// Descend into this for more alternatives
-	this.list_next = null;
-	this.list_skp = null;
-	this.list_skp_nid = null;
+module.exports.PartialMatch = PartialMatch;
+function PartialMatch(position, type, open, close){
+	if(!type) throw new Error('Expected a Type');
+	this.position = position;
+	this.type = type;
+	this.open = open || []; // list of groups that open
+	this.close = close || []; // list of groups that open
 }
-Node.prototype.test = function test(chr){
-	if(this.range===undefined){
-		// Undefined matches everything
-		return true;
-	}else if(this.range===null || typeof this.range==='string'){
-		return chr===this.range;
-	}else if(this.range && this.range.test){
-		return this.range.test(chr);
-	}
 
-};
-Node.prototype.toString = function toString(){
-	return '[Node '+this.nid+']';
+module.exports.FinalMatch = FinalMatch;
+function FinalMatch(route, close){
+	this.route = route;
+	this.close = close;
+}
+FinalMatch.prototype.toString = function toString(){
+	return '<'+this.route.uriTemplate+'>';
 };
 
 var rule_literals = /([\x21\x23-\x24\x26\x28-\x3B\x3D\x3F-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\uD7FF\uE000-\uFDCF\uFDF0-\uFFEF]|[\uD800-\uDBFF][\uDC00-\uDFFF]|%[0-9A-Fa-f][0-9A-Fa-f])/;
@@ -207,6 +199,64 @@ Route.prototype.toString = function toString(params){
 Route.prototype.toJSON = function toJSON(){
 	return this.uriTemplate;
 };
+Route.prototype.toFSM = function toFSM(){
+	const route = this;
+	var template_i = 0;
+
+	// Get the FSM of each of the tokens, and concatenate them together
+	const fsms = route.tokens.map(function addExpression(expression){
+		// If a string, treat as literal characters
+		if(typeof expression=='string'){
+			const offset = template_i;
+			template_i += expression.length;
+			return fromString(expression, v=>({[route.uriTemplate]:new PartialMatch((offset+v), Literal)}));
+		}
+		return expression.toFSM(route.uriTemplate, template_i);
+	});
+	return concat(fsms);
+	// return reduce(concat(fsms));
+};
+Route.prototype.toRegex = function toRegex(){
+	const regex_str = this.tokens.map(function(segment){
+		if(typeof segment==='string'){
+			return regex_escape(segment);
+		}else{
+			return segment.toRegex().source;
+		}
+	}).join('');
+	return new RegExp('^'+regex_str+'$', 'u');
+};
+Route.prototype.decode = function decode(uri){
+	const regex = this.toRegex();
+	const match = uri.match(regex);
+	if(!match) return;
+
+	var offset = 1;
+	const result = {};
+	for(var i=0; i<this.tokens.length; i++){
+		const segment = this.tokens[i];
+		// This segment is not an expression, there's nothing to parse here
+		if(typeof segment === 'string') continue;
+		for(var j=0; j<segment.variableList.length; j++){
+			const varname = segment.variableList[j].varname;
+			const value = match[offset++];
+			if(typeof value === 'string'){
+				if(segment.variableList[j].explode){
+					// If the variable is exploded, split it apart by the separator since toRegex matched it as a single string
+					if(segment.variableList[j].named){
+						// Also if this is a named variable, the string includes "varname=" in each segment
+						result[varname] = value.split(segment.separator).map(decodeURIComponent).map( v => v.replace(new RegExp('^'+regex_escape(segment.variableList[j].varname)+'=', 'ug'), '') );
+					}else{
+						result[varname] = value.split(segment.separator).map(decodeURIComponent);
+					}
+				}else if(value){
+					result[varname] = decodeURI(value);
+				}
+			}
+		}
+	}
+	return result;
+}
 
 module.exports.Expression = Expression;
 function Expression(operatorChar, variableList, index){
@@ -250,6 +300,38 @@ Expression.prototype.toString = function toString(params){
 		return '{' + this.operatorChar + this.variableList.toString() + '}';
 	}
 };
+Expression.prototype.toFSM = function toFSM(uriTemplate, offset){
+	var offset_i = offset;
+	const fsm_0 = [];
+	for(var i=0; i<this.variableList.length; i++){
+		if(i==0 && this.prefix){
+			fsm_0.push(concat([ fromString(this.prefix), this.variableList[i].toFSM(uriTemplate, offset_i) ]));
+			offset_i += 1;
+		}else if(i>0 && this.separator){
+			fsm_0.push(concat([ fromString(this.separator), this.variableList[i].toFSM(uriTemplate, offset_i) ]));
+			offset_i += 1;
+		}else{
+			fsm_0.push(this.variableList[i].toFSM(uriTemplate, offset_i));
+		}
+		offset_i += this.variableList[i].varname.length;
+	}
+	return optional(concat(fsm_0));
+};
+Expression.prototype.toRegex = function toRegex(){
+	var fsm_0 = '';
+	if(this.prefix){
+		fsm_0 += regex_escape(this.prefix);
+	}
+	for(var i=0; i<this.variableList.length; i++){
+		if(i>0 && this.separator){
+			fsm_0 += '(?:' + regex_escape(this.separator) + this.variableList[i].toRegex().source + ')?';
+		}else{
+			fsm_0 += this.variableList[i].toRegex().source;
+		}
+	}
+	// The entire expression is optional
+	return new RegExp('(?:'+fsm_0+')?', 'u');
+}
 
 module.exports.Variable = Variable;
 function Variable(operatorChar, varname, explode, maxLength){
@@ -362,9 +444,39 @@ Variable.prototype.expand = function(params){
 	}
 	return null;
 };
+Variable.prototype.toFSM = function toFSM(uriTemplate, offset){
+	const op = operators[this.operatorChar];
+	const fsm = range_fsm(this.range, uriTemplate, offset);
+	if(this.explode){
+		if(op.named){
+			return optional(concat([concat([fromString(this.varname), optional(concat([fromString('='), fsm]))]), star(concat([fromString(this.separator), fromString(this.varname), optional(concat([fromString('='), fsm]))]))]));
+		}else{
+			return optional(concat([fsm, star(concat([fromString(this.separator), fsm]))]));
+		}
+	}else if(op.named){
+		return optional(concat([fromString(this.varname), optional(concat([fromString('='), fsm]))]));
+	}else{
+		return fsm;
+	}
+}
+Variable.prototype.toRegex = function toRegex(){
+	const op = operators[this.operatorChar];
+	if(this.explode){
+		if(op.named){
+			return new RegExp('((?:'+regex_escape(this.varname)+'(?:=('+range_regex(this.range)+'*)))(?:'+this.separator+'(?:'+regex_escape(this.varname)+'(='+range_regex(this.range)+'*)))*)?', 'u');
+		}else{
+			// Include the separator in the range, we will split() it later
+			return new RegExp('('+range_regex(this.range+this.separator)+'*)', 'u');
+		}
+	}else if(op.named){
+		return new RegExp('(?:'+regex_escape(this.varname)+'(?:=('+range_regex(this.range)+'*))?)?', 'u');
+	}else{
+		return new RegExp('('+range_regex(this.range)+'*)', 'u');
+	}
+}
 
 module.exports.Result = Result;
-function Result(router, uri, options, route, params, remaining_state, history){
+function Result(router, uri, options, route, params, history, final_states, remaining_state){
 	this.router = router;
 	this.uri = uri;
 	this.options = options;
@@ -372,8 +484,9 @@ function Result(router, uri, options, route, params, remaining_state, history){
 	this.uriTemplate = route.uriTemplate;
 	this.matchValue = route.matchValue;
 	this.params = params;
-	this.remaining_state = remaining_state;
 	this.history = history;
+	this.final_states = final_states;
+	this.remaining_state = remaining_state;
 }
 
 Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
@@ -386,7 +499,13 @@ Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
 };
 
 Result.prototype.next = function next(){
-	return this.router.resolveURI(this.uri, this.options, this.remaining_state);
+	// return this.router.resolveURI(this.uri, this.options, this.remaining_state);
+	// With all of the characters parsed, the current "state" contains the solution
+	const solution = this.final_states[this.remaining_state];
+	// ... If it lists one
+	if(!solution) return;
+	const bindings = solution.route.decode(this.uri);
+	return new Result(this.router, this.uri, this.options, solution.route, bindings, this.history, this.final_states, this.remaining_state+1);
 };
 
 Object.defineProperty(Result.prototype, "template", {
@@ -399,8 +518,6 @@ Object.defineProperty(Result.prototype, "name", {
 });
 
 Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchValue){
-	const self = this;
-	const nodeMap = {};
 	if(typeof uriTemplate=='object' && options===undefined && matchValue===undefined){
 		var route = uriTemplate;
 		uriTemplate = route.uriTemplate;
@@ -410,89 +527,17 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		route = new Route(uriTemplate, options, matchValue);
 	}
 
-	// Iterate over tokens in route to add the route to the tree
-	var node = this.tree;
-	var template_i = 0;
-	route.tokens.forEach(function addExpression(expression){
-		if(typeof expression=='string'){
-			for(var i=0; i<expression.length; i++){
-				var chr = expression[i];
-				if(chr==='%' && expression[i+1] && expression[i+2]){
-					chr += expression[i+1] + expression[i+2];
-					if(!chr.match(/^%[0-9A-F]{2}$/)) throw new Error('Assert: Invalid pct-encoded character');
-					i += 2;
-				}
-				// Descend node into the branch, creating it if it doesn't exist
-				node.match_chr[chr] = node.match_chr[chr] || new Node(chr, ++self.nid);
-				node = node.match_chr[chr];
-				nodeMap[node.nid] = {};
-				node.chr_offset = template_i;
-				template_i++;
-			}
-			return;
+	const fsm = route.fsm = route.toFSM(uriTemplate);
+	fsm.forEach(function(state){
+		if(!state.partials[uriTemplate]){
+			// state.partials[uriTemplate] = new PartialMatch(0, 9);
 		}
-		expression.variableList.forEach(function addPath(varspec){
-			if(typeof varspec!=='object') throw new Error('Unknown type');
-			var setNext = [];
-			if(varspec.optional){
-				setNext.push(node);
-			}
-			if(varspec.prefix){
-				node.match_pfx[varspec.prefix] = node.match_pfx[varspec.prefix] || new Node(varspec.prefix, ++self.nid);
-				node = node.match_pfx[varspec.prefix];
-				nodeMap[node.nid] = {
-					expression: expression,
-					varspec: varspec,
-					vpush: varspec.explode && varspec.index,
-				};
-				//var prefixNode = node;
-			}
-			node.list_set = node.list_set || {};
-			node.list_set[varspec.range] = node.list_set[varspec.range] || new Node(varspec.range, ++self.nid);
-			node.list_set_keys = Object.keys(node.list_set).sort(sortRanges);
-			node = node.list_set[varspec.range];
-			var rangeNode = node;
-			nodeMap[node.nid] = {
-				expression: expression,
-				varspec: varspec,
-				vindex: varspec.index,
-			};
-			node.match_range = varspec.range;
-			node.match_range_vindex = varspec.index;
-			if(varspec.explode){
-				node.match_pfx[varspec.delimiter] = node.match_pfx[varspec.delimiter] || new Node(varspec.delimiter, ++self.nid);
-				var delimiterNode = node.match_pfx[varspec.delimiter];
-				nodeMap[delimiterNode.nid] = {
-					expression: expression,
-					varspec: varspec,
-					vpush: varspec.explode && varspec.index,
-				};
-				delimiterNode.list_set = delimiterNode.list_set || {};
-				delimiterNode.list_set[varspec.range] = rangeNode;
-				delimiterNode.list_set_keys = Object.keys(delimiterNode.list_set).sort(sortRanges);
-				setNext.push(delimiterNode);
-			}
-			node.list_next = node.list_next || new Node(undefined, ++self.nid);
-			node = node.list_next;
-			setNext.forEach(function(n){
-				n.list_next = node;
-			});
-			template_i++;
-		});
+		if(state.final){
+			state.final = [new FinalMatch(route)];
+		}
 	});
-	// Add EOF condition
-	{
-		node.match_eof = node.match_eof || new Node(null, ++self.nid);
-		node = node.match_eof;
-		node.chr_offset = template_i;
-		template_i++;
-	}
-	if(node.template_match){
-		throw new Error('Route already defined');
-	}
-	node.template_match = route;
-	node.template_nodes = nodeMap;
 
+	this.states = union([this.states, fsm]);
 	this.routeSet.add(route);
 	this.templateRouteMap.set(uriTemplate, route);
 	if(!this.valueRouteMap.has(matchValue)){
@@ -501,53 +546,6 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	return route;
 };
 
-var S = {
-	EOF: 10, // Expending end of input
-	CHR: 20, // Expecting a character, or "%" to begin a pct-encoded sequence
-	PCT1: 31, // Expecting first hex char of a pct-encoded sequence
-	PCT2: 32, // Expecting the second hex char of a pct-encoded sequence
-};
-// Enable for testing
-for(var n in S) S[n]=n;
-
-// Some constants
-var MATCH_EOF = 'match_eof';
-var MATCH_CHR = 'match_chr';
-var MATCH_PFX = 'match_pfx';
-var MATCH_RANGE = 'match_range';
-
-var MATCH_SORT = {
-	INIT: 0,
-	MATCH_CHR: 10,
-	MATCH_PFX: 20,
-	MATCH_RANGE: {
-		UNRESERVED: 30,
-		RESERVED_UNRESERVED: 31,
-		QUERY: 32,
-	},
-};
-
-function State(prev, offset, branch, chr, type, sort){
-	if(prev && !(prev instanceof State)) throw new Error('prev not instanceof State');
-	if(prev && (offset <= prev.offset)) throw new Error('out-of-order state history, expected '+(prev.offset+1)+' got '+offset);
-	if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
-	if(typeof sort!=='number') throw new Error('Expected `sort` to be a number');
-	// The state at the previous character
-	this.prev = prev;
-	// The current character position
-	this.offset = offset;
-	// Branch of the tree the match made found on
-	this.branch = branch;
-	// The character(s) being consumed
-	this.chr = chr;
-	// The type of match that was made (match_pfx, etc.)
-	this.type = type;
-	// The sort order of the match that was made
-	this.sort = sort;
-	// The order the match was inserted into the tree, e.g. in case an expression is skipped, prefer the earlier matched one
-	this.weight = 0;
-}
-
 // like resolveString, but additionally verify that the URI matches the legal HTTP form
 // userinfo and fragment components are not allowed
 // Router.prototype.resolveRequest = function resolveRequest(scheme, host, target, flags, initial_state){
@@ -555,12 +553,14 @@ function State(prev, offset, branch, chr, type, sort){
 
 // like resolveString, but additionally verify that the URI matches the legal HTTP form
 // userinfo and fragment components are not allowed
+
 Router.prototype.resolveRequestURI = function resolveRequestURI(uri, flags, initial_state){
 	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
 	// First verify the URI looks OK, save the components, then parse it normally
 	// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
 	const scheme_m = uri.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
 	if(!scheme_m) throw new Error('parseURI: `uri` missing valid scheme');
+	// const hierpart_m = uri.substring(scheme_m[0].length).match(/^\/\/(?:\x5b(?:[\x2e0-:a-f]*|v[0-9a-f]+\x2e[!\x24&-\x2e0-;=_a-z~]+)\x5d|(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\x2e(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\x2e(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\x2e(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])|(?:[\x2d\x2e0-9_a-z~]|%[0-9a-f][0-9a-f]|[!\x24&-,;=])*)(?::\d*)?/);
 	// URI appears to be valid, now resolve it normally
 	return this.resolveURI(uri, flags, initial_state);
 };
@@ -569,126 +569,39 @@ Router.prototype.resolveRequestURI = function resolveRequestURI(uri, flags, init
 Router.prototype.resolveURI = function resolveString(uri, flags, initial_state){
 	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
 	var self = this;
-	if(initial_state){
-		var parse_backtrack = initial_state.slice();
-	}else{
-		parse_backtrack = [new State(null, 0, this.tree, '', MATCH_CHR, MATCH_SORT.INIT, null)];
-	}
-	function consumeInputCharacter(offset, chr, state, branch){
-		if(!(branch instanceof Node)) throw new Error('branch not instanceof Node');
-		const stack = [];
-		function match(branch, type, sort){
-			stack.push(new State(state, offset+1, branch, chr, type, sort));
-		}
+	if(initial_state===undefined) initial_state = 0;
+	if(typeof initial_state!=='number') throw new Error('Expected arguments[2] `initial_state` to be a number');
+	// 0 is the initial state
+	var state = this.states[0];
+	const history = [{state}];
+	const pctenc = /^%[0-9A-F]{2}$/;
 
-		// EOF always matches first
-		if(chr===null && branch.match_eof){
-			match(branch.match_eof, MATCH_EOF, MATCH_SORT.MATCH_CHR);
-		}
-
-		// First try patterns with exact character matches
-		if(branch.match_chr[chr]){
-			match(branch.match_chr[chr], MATCH_CHR, MATCH_SORT.MATCH_CHR);
-		}
-
-		// If the match_pfx isn't matched, then skip over the following match_range too...
-		if(branch.match_pfx[chr]){
-			match(branch.match_pfx[chr], MATCH_PFX, MATCH_SORT.MATCH_PFX);
-		}
-
-		// Then try patterns with range matches
-		for(var i=0; i<branch.list_set_keys.length; i++){
-			const rangeName = branch.list_set_keys[i];
-			consumeInputCharacter(offset, chr, state, branch.list_set[rangeName]).forEach(stack.push.bind(stack));
-		}
-
-		if(branch.match_range && branch.match_range.test(chr)){
-			match(branch, MATCH_RANGE, branch.match_range.sortSize);
-		}
-		// If the expression is optional, try skipping over it, too
-		if(branch.list_next){
-			consumeInputCharacter(offset, chr, state, branch.list_next).forEach(stack.push.bind(stack));
-		}
-		return stack;
-	}
-	for(var offset = 0;;){
-		var state = parse_backtrack.shift();
+	for(var offset = 0; state && offset < uri.length; offset++){
 		if(!state) break;
-		offset = state.offset;
-		if(offset > uri.length) throw new Error('Overgrew offset');
-		// This will set chr===undefined for the EOF position
-		// We could also use another value like "\0" or similar to represent EOF
-		var chr = (offset<uri.length) ? uri[offset] : null;
-		if(chr=='%' && uri[offset+1] && uri[offset+2]){
-			chr += uri[offset+1] + uri[offset+2];
-			if(!chr.match(/^%[0-9A-F]{2}$/)) throw new Error('Invalid pct-encoded character');
-			offset += 2;
-		}
-		var stack = consumeInputCharacter(offset, chr, state, state.branch);
-		// Take all the equal alternatives that matched the EOF and if there's exactly one, return it.
-		if(offset==uri.length){
-			var solutions = stack
-				.filter(function(v){ return v.branch && v.branch.template_match; })
-				.map(function(v){ return finish(v); });
-			if(solutions.length>1){
-				return solutions[0];
-				//throw new Error('Multiple equal templates matched');
-			}else if(solutions.length==1){
-				return solutions[0];
+		const symbol = uri[offset];
+		// Double-check that pct-encoded sequences are valid (in addition to what the FSM should prohibit)
+		if(symbol==='%'){
+			if(!pctenc.test(uri.substring(offset, offset+3))){
+				return;
 			}
 		}
-		// Force the order of matches to prefer single-character matches (the `sort`)
-		// Otherwise, preserve insertion order (the `weight`)
-		// stack.forEach(function(v, i){ v.weight = i; });
-		// stack.sort(function(a, b){ return (a.sort - b.sort) || (a.weight - b.weight); });
-		// stack.forEach(function(v){ parse_backtrack.push(v); });
-		stack.forEach(function(v){ if(v.type==MATCH_CHR) parse_backtrack.push(v); });
-		stack.forEach(function(v){ if(v.type==MATCH_PFX) parse_backtrack.push(v); });
-		stack.forEach(function(v){ if(v.type==MATCH_RANGE) parse_backtrack.push(v); });
+		const nextStateId = state.get(symbol);
+		if(nextStateId === undefined) return;
+		state = this.states[nextStateId];
+		history.push({symbol, nextStateId, state});
 	}
 
-	function finish(solution){
-		var history = [];
-		var route = solution.branch.template_match;
-		var nodeMap = solution.branch.template_nodes;
-		for(var item=solution; item.prev; item=item.prev){
-			var branch = item.branch;
-			history.unshift({
-				chr: item.chr,
-				offset: item.prev.offset,
-				type: item.type,
-				vindex: nodeMap[branch.nid] && nodeMap[branch.nid].vindex,
-				vpush: nodeMap[branch.nid] && nodeMap[branch.nid].vpush,
-				node: branch,
-				nid: branch.nid,
-				transition: nodeMap[branch.nid],
-			});
-		}
-		var var_list = [];
-		for(var item_i=0; item_i<history.length; item_i++){
-			const item = history[item_i];
-			if(item.chr && !item.node.test(item.chr)){
-				throw new Error('Assert: Node range '+item.node.range+' mismatches character['+item_i+'] '+item.chr);
-			}
-			var chr = item.chr || null;
-			if(item.vpush!==undefined){
-				var_list[item.vpush] = var_list[item.vpush] || [];
-				var_list[item.vpush].push('');
-			}else if(item.vindex!==undefined){
-				var varv = var_list[item.vindex];
-				if(Array.isArray(varv)){
-					if(chr) varv[varv.length-1] = varv[varv.length-1] + chr;
-				}else{
-					if(chr) var_list[item.vindex] = (varv||'') + chr;
-				}
-			}
-		}
-		var bindings = {};
-		route.variables.forEach(function(v){
-			if(var_list[v.index]!==undefined){
-				bindings[v.varname] = Array.isArray(var_list[v.index]) ? var_list[v.index].map(decodeURIComponent) : decodeURIComponent(var_list[v.index]) ;
-			}
-		});
-		return new Result(self, uri, flags, route, bindings, parse_backtrack, history);
+	// With all of the characters parsed, the current "state" contains the solution 
+	const solution = state.final[initial_state];
+	// ... If it lists one
+	if(!solution) return;
+
+	for(var item_i=0; item_i<history.length; item_i++){
+		// const item = history[item_i].state.partials[solution.route.uriTemplate];
 	}
+
+	if(solution){
+		var bindings = solution.route.decode(uri);
+	}
+	return new Result(self, uri, flags, solution.route, bindings, history, state.final, initial_state+1);
 };

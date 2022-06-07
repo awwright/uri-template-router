@@ -7,10 +7,12 @@ textarea, input {
 }
 
 html, body {
-	max-width: 60em;
-	margin: 0 auto;
 	tab-size: 3;
 	-moz-tab-size: 3;
+}
+body {
+	max-width: 60em;
+	margin: 0 auto;
 }
 
 h2 {

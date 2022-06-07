@@ -1,3 +1,4 @@
+"use strict";
 
 var assert = require('assert');
 //var util = require('util');
@@ -16,14 +17,10 @@ describe('base.json', function(){
 				router.addTemplate(template, {}, i);
 			});
 			Object.keys(testPage.uris).forEach(function(uri){
-				it(uri, function(){
+				it(`<${uri}>`, function(){
 					var route = router.resolveURI(uri);
 					var expected = testPage.uris[uri];
-					if(route && route.params){
-						assert.deepEqual(route.params, expected);
-					}else{
-						assert(!expected);
-					}
+					assert.deepEqual(route && route.params, expected);
 				});
 			});
 		});
