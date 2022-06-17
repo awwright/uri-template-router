@@ -302,7 +302,7 @@ describe('fsm.compare', function(){
 			new Node({}, {}, false),
 			new Node({}, {}, true),
 		];
-		assert.deepEqual(compare([fsm_a, fsm_b]), [false, false]);
+		assert.deepEqual(compare([fsm_a, fsm_b]), [false, false, true]);
 	});
 	it('superset', function(){
 		const fsm_a = [
@@ -315,7 +315,7 @@ describe('fsm.compare', function(){
 			new Node({}, {}, false),
 			new Node({}, {}, true),
 		];
-		assert.deepEqual(compare([fsm_a, fsm_b]), [true, false]);
+		assert.deepEqual(compare([fsm_a, fsm_b]), [true, false, false]);
 	});
 	it('subset', function(){
 		const fsm_a = [
@@ -328,7 +328,7 @@ describe('fsm.compare', function(){
 			new Node({}, {}, true),
 			new Node({}, {}, true),
 		];
-		assert.deepEqual(compare([fsm_a, fsm_b]), [false, true]);
+		assert.deepEqual(compare([fsm_a, fsm_b]), [false, true, false]);
 	});
 	it('equal', function(){
 		const fsm_a = [
@@ -341,6 +341,21 @@ describe('fsm.compare', function(){
 			new Node({}, {}, true),
 			new Node({}, {}, false),
 		];
-		assert.deepEqual(compare([fsm_a, fsm_b]), [true, true]);
+		assert.deepEqual(compare([fsm_a, fsm_b]), [true, true, false]);
+	});
+	it('partial overlap', function(){
+		const fsm_a = [
+			new Node({'a':1, 'b':2, 'c':3}),
+			new Node({}, {}, true),
+			new Node({}, {}, false),
+			new Node({}, {}, true),
+		];
+		const fsm_b = [
+			new Node({'a':1, 'b':2, 'c':3}),
+			new Node({}, {}, true),
+			new Node({}, {}, true),
+			new Node({}, {}, false),
+		];
+		assert.deepEqual(compare([fsm_a, fsm_b]), [false, false, false]);
 	});
 });
