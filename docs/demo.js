@@ -1,4 +1,4 @@
-const { Router, compare } = uriTemplateRouter;
+const { Router } = uriTemplateRouter;
 
 var router;
 
@@ -64,7 +64,7 @@ function refreshResults(){
 		tbody.appendChild(left_th);
 
 		router.routes.forEach(function(right){
-			const compare_res = compare([left.fsm, right.fsm]);
+			const compare_res = left.compare(right);
 			const td = document.createElement('th');
 			if(compare_res[0]===true && compare_res[1]===true){
 				// Equal

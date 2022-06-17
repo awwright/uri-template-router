@@ -2,7 +2,7 @@
 
 module.exports.Router = Router;
 
-const { Node, union, concat, optional, star, fromString } = require('./lib/fsm.js');
+const { Node, union, concat, optional, star, fromString, compare } = require('./lib/fsm.js');
 
 // Export a function that docs/demo.js uses
 // FIXME this might be relocated later
@@ -86,6 +86,7 @@ Router.prototype.clear = function clear(){
 	this.routeSet = new Set;
 	this.templateRouteMap = new Map;
 	this.valueRouteMap = new Map;
+	this.hierarchy = {children: []};
 };
 
 Router.prototype.hasRoute = function hasRoute(route){
@@ -200,6 +201,9 @@ Route.prototype.gen = function Route_gen(params){
 Route.prototype.toString = function toString(params){
 	return this.tokens.map( (v)=>v.toString(params) ).join('');
 };
+Route.prototype.compare = function routecompare(other){
+	return compare([this.fsm || this.toFSM(), other.fsm || other.toFSM()]);
+}
 Route.prototype.toJSON = function toJSON(){
 	return this.uriTemplate;
 };
@@ -547,6 +551,38 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 	if(!this.valueRouteMap.has(matchValue)){
 		this.valueRouteMap.set(matchValue, route);
 	}
+
+	// Update the route tree that maintains ordering
+	// For every node, all of its children must be disjoint
+	// Scan through each of the children:
+	children: for(var current=this.hierarchy; current;){
+		const compares = current.children.map(v => compare([fsm, v.node.fsm]));
+
+		// 1. if new route is a subset of exactly one of them, then descend into that child.
+		for(var i=0; i<compares.length; i++){
+			if(compares[i][0]===false && compares[i][1]===true){
+				current = current.children[i];
+				continue children;
+			}
+		}
+
+		// 2. if the new route is a superset of any number of them (and disjoint with all others), then insert new route as a child and move all matching children underneath it.
+		const route_siblings = [], route_children = [];
+		for(var i=0; i<compares.length; i++){
+			if(compares[i][0]===true){
+				// Move subsets into this route
+				route_children.push(current.children[i]);
+			}else if(compares[i][2]===true){
+				route_siblings.push(current.children[i]);
+			}else{
+				throw new Error('Inserted route partially overlaps with other routes');
+			}
+		}
+		route_siblings.push({node: route, uriTemplate, children: route_children});
+		current.children = route_siblings;
+		break;
+	}
+
 	return route;
 };
 
