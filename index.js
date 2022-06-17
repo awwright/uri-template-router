@@ -4,6 +4,10 @@ module.exports.Router = Router;
 
 const { Node, union, concat, optional, star, fromString } = require('./lib/fsm.js');
 
+// Export a function that docs/demo.js uses
+// FIXME this might be relocated later
+module.exports.compare = require('./lib/fsm.js').compare;
+
 const RANGE = {};
 RANGE.UNRES = ['-', '.', '0-9', 'A-Z', '_', 'a-z', '~'].join('');
 RANGE.GEN_D = [':', '/', '?', '#', '[', ']', '@'].join('');
