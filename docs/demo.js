@@ -87,6 +87,20 @@ function refreshResults(){
 			tbody.appendChild(td);
 		});
 	});
+
+	const parents = [ {element: document.getElementById('hierarchy-tree'), children:router.hierarchy.children} ];
+	for(var i=0; i<parents.length; i++){
+		const trunk = document.createElement('ul');
+		for(var j=0; j<parents[i].children.length; j++){
+			const item = document.createElement('li');
+			item.textContent = parents[i].children[j].uriTemplate;
+			trunk.appendChild(item);
+			if(parents[i].children[j].children.length){
+				parents.push({ element: item, children: parents[i].children[j].children });
+			}
+		}
+		parents[i].element.appendChild(trunk);
+	}
 }
 
 function alot(){
