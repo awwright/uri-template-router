@@ -88,6 +88,7 @@ function refreshResults(){
 		});
 	});
 
+	document.getElementById('hierarchy-tree').innerHTML = '';
 	const parents = [ {element: document.getElementById('hierarchy-tree'), children:router.hierarchy.children} ];
 	for(var i=0; i<parents.length; i++){
 		const trunk = document.createElement('ul');
