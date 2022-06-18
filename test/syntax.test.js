@@ -12,9 +12,12 @@ var tests = require('./base.json');
 describe('base.json', function(){
 	tests.forEach(function(testPage){
 		describe(testPage.label, function(){
-			var router = new Router;
-			testPage.templates.forEach(function(template, i){
-				router.addTemplate(template, {}, i);
+			var router;
+			before(function(){
+				router = new Router;
+				testPage.templates.forEach(function(template, i){
+					router.addTemplate(template, {}, i);
+				});
 			});
 			Object.keys(testPage.uris).forEach(function(uri){
 				it(`<${uri}>`, function(){
