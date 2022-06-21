@@ -486,17 +486,19 @@ Variable.prototype.toRegex = function toRegex(){
 }
 
 module.exports.Result = Result;
-function Result(router, uri, options, route, params, history, final_states, remaining_state){
+function Result(router, uri, options, history, final_states){
+	const final_match = final_states[0];
+	if(!final_match) throw new Error();
+	const route = final_match.route;
 	this.router = router;
 	this.uri = uri;
 	this.options = options;
 	this.route = route;
 	this.uriTemplate = route.uriTemplate;
 	this.matchValue = route.matchValue;
-	this.params = params;
+	this.params = route.decode(this.uri);
 	this.history = history;
 	this.final_states = final_states;
-	this.remaining_state = remaining_state;
 }
 
 Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
@@ -504,18 +506,16 @@ Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
 		uriTemplate = new Route(uriTemplate, options, name);
 	}
 	var uri = uriTemplate.gen(this.params);
-
-	return new Result(this.router, uri, options, uriTemplate, this.params);
+	return new Result(this.router, uri, options, [], [ { route: uriTemplate } ]);
 };
 
 Result.prototype.next = function next(){
 	// return this.router.resolveURI(this.uri, this.options, this.remaining_state);
 	// With all of the characters parsed, the current "state" contains the solution
-	const solution = this.final_states[this.remaining_state];
+	const remaining_states = this.final_states.slice(1);
 	// ... If it lists one
-	if(!solution) return;
-	const bindings = solution.route.decode(this.uri);
-	return new Result(this.router, this.uri, this.options, solution.route, bindings, this.history, this.final_states, this.remaining_state+1);
+	if(!remaining_states.length) return;
+	return new Result(this.router, this.uri, this.options, this.history, remaining_states);
 };
 
 Object.defineProperty(Result.prototype, "template", {
@@ -624,11 +624,9 @@ Router.prototype.resolveRequestURI = function resolveRequestURI(uri, flags, init
 };
 
 // TODO rename this to `resolveString`
-Router.prototype.resolveURI = function resolveString(uri, flags, initial_state){
+Router.prototype.resolveURI = function resolveString(uri, flags){
 	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
-	var self = this;
-	if(initial_state===undefined) initial_state = 0;
-	if(typeof initial_state!=='number') throw new Error('Expected arguments[2] `initial_state` to be a number');
+	const self = this;
 	// 0 is the initial state
 	var state = this.states[0];
 	const history = [{state}];
@@ -650,16 +648,7 @@ Router.prototype.resolveURI = function resolveString(uri, flags, initial_state){
 	}
 
 	// With all of the characters parsed, the current "state" contains the solution 
-	const solution = state.final[initial_state];
-	// ... If it lists one
+	const solution = state.final[0];
 	if(!solution) return;
-
-	for(var item_i=0; item_i<history.length; item_i++){
-		// const item = history[item_i].state.partials[solution.route.uriTemplate];
-	}
-
-	if(solution){
-		var bindings = solution.route.decode(uri);
-	}
-	return new Result(self, uri, flags, solution.route, bindings, history, state.final, initial_state+1);
+	return new Result(self, uri, flags, history, state.final);
 };
