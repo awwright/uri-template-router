@@ -193,6 +193,8 @@ function Route(uriTemplate, options, matchValue){
 			throw new Error('Unexpected character '+JSON.stringify(chr));
 		}
 	}
+
+	this.fsm = this.toFSM();
 }
 Route.prototype.gen = function Route_gen(params){
 	if(typeof params!='object') throw new Error('Expected arguments[0] `params` to be an object');
@@ -535,7 +537,8 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		route = new Route(uriTemplate, options, matchValue);
 	}
 
-	const fsm = route.fsm = route.toFSM(uriTemplate);
+	const fsm = route.fsm;
+
 	fsm.forEach(function(state){
 		if(!state.partials[uriTemplate]){
 			// state.partials[uriTemplate] = new PartialMatch(0, 9);
@@ -545,7 +548,6 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		}
 	});
 
-	this.states = union([this.states, fsm]);
 	this.routeSet.add(route);
 	this.templateRouteMap.set(uriTemplate, route);
 	if(!this.valueRouteMap.has(matchValue)){
@@ -573,9 +575,10 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 				// Move subsets into this route
 				route_children.push(current.children[i]);
 			}else if(compares[i][2]===true){
+				// Record disjoint nodes and make them siblings
 				route_siblings.push(current.children[i]);
 			}else{
-				throw new Error('Inserted route partially overlaps with other routes');
+				throw new Error('Inserted route '+uriTemplate+' partially overlaps with other routes '+current.children[i].uriTemplate);
 			}
 		}
 		route_siblings.push({node: route, uriTemplate, children: route_children});
@@ -583,7 +586,22 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		break;
 	}
 
+	this.reindex();
+
 	return route;
+};
+
+Router.prototype.reindex = function reindex(){
+	// Update the sort index based on the hierarchy
+	const order_map = new Map;
+	var order = 0;
+	function visit(hierarchy){
+		hierarchy.children.forEach(visit);
+		if(hierarchy.node) order_map.set(hierarchy.node, order++);
+	}
+	visit(this.hierarchy);
+
+	this.states = union(this.routes.map(r => r.fsm), order_map);
 };
 
 // like resolveString, but additionally verify that the URI matches the legal HTTP form

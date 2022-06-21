@@ -169,11 +169,7 @@
 			"http://example.com/",
 			"http://example.com/a/b/c",
 			"http://example.com/a/b{/c}",
-			"http://example.com/a{/b}/c",
 			"http://example.com/a{/b}{/c}",
-			"http://example.com{/a}/b/c",
-			"http://example.com{/a}/b{/c}",
-			"http://example.com{/a}{/b}/c",
 			"http://example.com{/a}{/b}{/c}"
 		],
 		"uris": {
