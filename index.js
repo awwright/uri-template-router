@@ -2,7 +2,7 @@
 
 module.exports.Router = Router;
 
-const { Node, reduce, union, concat, optional, star, fromString, compare } = require('./lib/fsm.js');
+const { Node, reduce, parallel, union, concat, optional, star, fromString, compare } = require('./lib/fsm.js');
 
 // Export a function that docs/demo.js uses
 // FIXME this might be relocated later
@@ -195,6 +195,30 @@ function Route(uriTemplate, options, matchValue){
 	}
 
 	this.fsm = reduce(this.toFSM());
+
+	function partial_intersect(states){
+		if(states[0]) return states[0].partials;
+	}
+	function final_intersect(states){
+		if(states.every(final => final && (Array.isArray(final) ? final.length : final))){
+			const items = states.flatMap(final => (final && Array.isArray(final)) ? final : []);
+			return items.length ? items : true;
+		}else{
+			return false;
+		}
+	}
+
+	if(options && options.parent){
+		var parent = options.parent;
+		if(typeof options.parent=='object'){
+			parent = options.parent;
+		}else if(typeof options.parent==='string'){
+			parent = new Route(options.parent);
+		}else{
+			throw new Error('Unknown type for parent');
+		}
+		this.fsm = parallel([this.fsm, parent.fsm], partial_intersect, final_intersect);
+	}
 }
 Route.prototype.gen = function Route_gen(params){
 	if(typeof params!='object') throw new Error('Expected arguments[0] `params` to be an object');

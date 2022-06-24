@@ -12,6 +12,20 @@ describe('Router', function(){
 	it('Router#addTemplate()', function(){
 		assert(typeof r.addTemplate === 'function');
 	});
+	it('Router#addTemplate() error on overlap', function(){
+		assert.throws(function(){
+			r.addTemplate('{+path}.html');
+			r.addTemplate('{path}');
+		}, err => err instanceof Error);
+	});
+	it('Router#addTemplate() overlap with parent option', function(){
+		const parent = r.addTemplate('{+path}.html');
+		const child = r.addTemplate('f{path}', {parent});
+		assert.strictEqual(r.resolveURI('foo.html').uriTemplate, child.uriTemplate);
+		assert.strictEqual(r.resolveURI('bar.html').uriTemplate, parent.uriTemplate);
+		assert.strictEqual(r.resolveURI('foo'), undefined);
+		assert.strictEqual(r.resolveURI('bar'), undefined);
+	});
 	it('Router#resolveURI()', function(){
 		const route = r.addTemplate('http://localhost/~{name}', {}, 'foo');
 		const m = r.resolveURI('http://localhost/~root');
