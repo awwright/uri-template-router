@@ -2,7 +2,7 @@
 
 module.exports.Router = Router;
 
-const { Node, union, concat, optional, star, fromString, compare } = require('./lib/fsm.js');
+const { Node, reduce, union, concat, optional, star, fromString, compare } = require('./lib/fsm.js');
 
 // Export a function that docs/demo.js uses
 // FIXME this might be relocated later
@@ -194,7 +194,7 @@ function Route(uriTemplate, options, matchValue){
 		}
 	}
 
-	this.fsm = this.toFSM();
+	this.fsm = reduce(this.toFSM());
 }
 Route.prototype.gen = function Route_gen(params){
 	if(typeof params!='object') throw new Error('Expected arguments[0] `params` to be an object');
