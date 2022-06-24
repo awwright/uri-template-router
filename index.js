@@ -561,6 +561,18 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		route = new Route(uriTemplate, options, matchValue);
 	}
 
+	// Verify the template doesn't re-use a variable name
+	const varnames = new Set;
+	route.tokens.forEach(function(token){
+		if(typeof token === 'string') return;
+		token.variableList.forEach(function(varspec){
+			if(varnames.has(varspec.varname)){
+				throw new Error('Duplicate variable name '+varspec.varname);
+			}
+			varnames.add(varspec.varname);
+		});
+	});
+
 	const fsm = route.fsm;
 
 	fsm.forEach(function(state){

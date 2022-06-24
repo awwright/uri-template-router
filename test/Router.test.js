@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 
-const { Router } = require('..');
+const { Router, Route } = require('..');
 
 describe('Router', function(){
 	var r;
@@ -25,6 +25,13 @@ describe('Router', function(){
 		assert.strictEqual(r.resolveURI('bar.html').uriTemplate, parent.uriTemplate);
 		assert.strictEqual(r.resolveURI('foo'), undefined);
 		assert.strictEqual(r.resolveURI('bar'), undefined);
+	});
+	it('Router#addTemplate() errors on duplicate variables', function(){
+		assert.throws(function(){
+			r.addTemplate('{+path}{path}');
+		}, err => err instanceof Error);
+		// URI Templates with repeated variables are cool though
+		new Route('{+path}{path}');
 	});
 	it('Router#resolveURI()', function(){
 		const route = r.addTemplate('http://localhost/~{name}', {}, 'foo');
