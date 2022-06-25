@@ -31,9 +31,9 @@
 		<h3>URI Template list</h3>
 		<p>List one per line</p>
 		<div><textarea id="templates">http://localhost/~{user}
-http://localhost/blog{/yyyy,mm,dd,slug}
-http://localhost/blog{/yyyy,mm,dd,slug}.md
-http://localhost/blog{/yyyy,mm,dd,slug}.html
+http://localhost/blog{/slug}
+http://localhost/blog/{slug}.md
+http://localhost/blog/{slug}.html
 http://localhost/static{/path*}
 </textarea></div>
 		<div id="router-status">Ready</div>
@@ -53,11 +53,13 @@ http://localhost/static{/path*}
 		<h3>Hierarchy Tree</h3>
 		<div id="hierarchy-tree"></div>
 
+		<!--
 		<h3>Hierarchy Table</h3>
 		<table>
 		<thead><tr id="sort-header"><th>A</th></tr></thead>
 		<tbody id="sort-tbody"></tbody>
 		</table>
+		-->
 
 		<h3>Evaluation tree</h3>
 		<pre id="result-graph"></pre>

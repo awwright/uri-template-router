@@ -50,43 +50,45 @@ function refreshResults(){
 
 	const header = document.getElementById('sort-header');
 	const tbody = document.getElementById('sort-tbody');
-	header.innerHTML = '<th>×</th>';
-	tbody.innerHTML = '';
-	router.routes.forEach(function(left){
-		const right_th = document.createElement('th');
-		right_th.textContent = left.uriTemplate;
-		header.appendChild(right_th);
+	if(header){
+		header.innerHTML = '<th>×</th>';
+		tbody.innerHTML = '';
+		router.routes.forEach(function(left){
+			const right_th = document.createElement('th');
+			right_th.textContent = left.uriTemplate;
+			header.appendChild(right_th);
 
-		const left_tr = document.createElement('tr');
-		tbody.appendChild(left_tr);
-		const left_th = document.createElement('th');
-		left_th.textContent = left.uriTemplate;
-		tbody.appendChild(left_th);
+			const left_tr = document.createElement('tr');
+			tbody.appendChild(left_tr);
+			const left_th = document.createElement('th');
+			left_th.textContent = left.uriTemplate;
+			tbody.appendChild(left_th);
 
-		router.routes.forEach(function(right){
-			const compare_res = left.compare(right);
-			const td = document.createElement('th');
-			if(compare_res[0]===true && compare_res[1]===true){
-				// Equal
-				td.textContent = '=';
-			}else if(compare_res[0]===true && compare_res[1]===false){
-				// Strict superset
-				td.textContent = '⊃';
-			}else if(compare_res[0]===false && compare_res[1]===true){
-				// Strict subset
-				td.textContent = '⊂';
-			}else if(compare_res[0]===false && compare_res[1]===false && compare_res[2]===true){
-				// No items in common
-				td.textContent = '≠';
-			}else if(compare_res[0]===false && compare_res[1]===false && compare_res[2]===false){
-				// There is an overlap
-				td.textContent = '∩';
-			}else{
-				td.textContent = compare_res;
-			}
-			tbody.appendChild(td);
+			router.routes.forEach(function(right){
+				const compare_res = left.compare(right);
+				const td = document.createElement('th');
+				if(compare_res[0]===true && compare_res[1]===true){
+					// Equal
+					td.textContent = '=';
+				}else if(compare_res[0]===true && compare_res[1]===false){
+					// Strict superset
+					td.textContent = '⊃';
+				}else if(compare_res[0]===false && compare_res[1]===true){
+					// Strict subset
+					td.textContent = '⊂';
+				}else if(compare_res[0]===false && compare_res[1]===false && compare_res[2]===true){
+					// No items in common
+					td.textContent = '≠';
+				}else if(compare_res[0]===false && compare_res[1]===false && compare_res[2]===false){
+					// There is an overlap
+					td.textContent = '∩';
+				}else{
+					td.textContent = compare_res;
+				}
+				tbody.appendChild(td);
+			});
 		});
-	});
+	}
 
 	document.getElementById('hierarchy-tree').innerHTML = '';
 	const parents = [ {element: document.getElementById('hierarchy-tree'), children:router.hierarchy.children} ];
