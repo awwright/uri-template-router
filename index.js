@@ -27,9 +27,7 @@ function range_regex(str){
 
 function range_fsm(str, uriTemplate, offset){
 	return optional([
-		new Node({[str]: 0, '%': 1}, {[uriTemplate]: new PartialMatch(offset, Value)}, true),
-		new Node({'0-9A-Fa-f': 2}, {[uriTemplate]: new PartialMatch(offset, Value)}, false),
-		new Node({'0-9A-Fa-f': 0}, {[uriTemplate]: new PartialMatch(offset, Value)}, false),
+		new Node({[str]: 0}, {[uriTemplate]: new PartialMatch(offset, Value)}, true),
 	]);
 }
 
@@ -159,6 +157,8 @@ function Route(uriTemplate, options, matchValue){
 	for(var uri_i=0; uri_i<uriTemplate.length; uri_i++){
 		var chr = uriTemplate[uri_i];
 		if(chr==='%'){
+			// A pct-encoded sequence is treated as a single character for efficiency
+			// (this more than halves the size of the tree)
 			if(uriTemplate.substring(uri_i, uri_i+3).match(/^%[0-9A-F]{2}$/)){
 				chr += uriTemplate[uri_i+1] + uriTemplate[uri_i+2];
 				uri_i += 2;
@@ -670,12 +670,13 @@ Router.prototype.resolveURI = function resolveString(uri, flags){
 
 	for(var offset = 0; state && offset < uri.length; offset++){
 		if(!state) break;
-		const symbol = uri[offset];
+		const symbol = uri[offset]==='%' ? uri.slice(offset, offset+3) : uri[offset];
 		// Double-check that pct-encoded sequences are valid (in addition to what the FSM should prohibit)
-		if(symbol==='%'){
-			if(!pctenc.test(uri.substring(offset, offset+3))){
+		if(symbol.length===3){
+			if(!pctenc.test(symbol)){
 				return;
 			}
+			offset += 2;
 		}
 		const nextStateId = state.get(symbol);
 		if(nextStateId === undefined) return;
