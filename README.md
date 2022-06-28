@@ -162,10 +162,10 @@ Constructor. No options.
 
 ### Router#addTemplate(pattern, options, matchValue)
 
-* pattern: string. Expects a valid URI Template.
-* options: object. Currently reserved.
+* pattern: string. Expects a string with a URI Template, or a Route object.
+* options: object. Used for creating a Route, if `pattern` is a string.
 * matchValue: any value. User-specified arbitrary value to be returned when this route is matched. Stored in `Router#matchValue` and `Result#matchValue`.
-* returns: Route
+* _returns_: Route
 
 Add a template to the set of templates. Mutates the instance.
 
@@ -176,6 +176,11 @@ Returns a `Route` object representing the particular route added.
 Match a given URI against the set of templates and return the best match as a Result object.
 
 ### new Route(uriTemplate, options, value)
+
+* pattern: string. Must be a URI Template.
+* options: object:
+	* parent: The route will be intersected with this one, so that it is guaranteed to be a subset.
+* matchValue: any value. User-specified arbitrary value to be returned when this route is matched. Stored in `Router#matchValue` and `Result#matchValue`.
 
 ### Route#toString(params)
 
@@ -223,7 +228,7 @@ var route3 = route2.next();
 
 ### Result#rewrite(route)
 
-Allows a result to be rewritten into another form using the matched data from the input. This serves a similar function to a regular expression replace.
+Allows a result to be rewritten into another form using the matched data from the input. This serves a function similar to a regular expression replace.
 
 `route` may be a Route object, or a string (which will create a Route object).
 

@@ -34,15 +34,10 @@ const route = new Route('http://localhost/blog{/yyyy,mm,dd,slug}');
 console.log(route.toString({yyyy:'1999', mm:'10', dd:'30', slug:'homesteading-the-noosphere'}));
 // Output: "http://localhost/blog/1999/10/30/homesteading-the-noosphere"
 </pre>
-			<p>The full feature set of <a href="https://tools.ietf.org/html/rfc6570">RFC 6570 URI templates</a> is available for use, including substrings and all the operators.</p>
-		</section>
-
-		<section id="usage-router">
-			<h3>Routing a set of URI Templates</h3>
-			<p>The <a href="api.xhtml#api-router">Router</a> interface collects multiple Route instances, and can route a URI to the closest matching Route, as well as the parameters that can be used to fill it to reproduce the given URI.</p>
-			<pre>
+<pre>
 const router = new Router;
 const routes = {
+	index: router.addRoute('http://localhost/'),
 	blog: router.addRoute('http://localhost/blog{/yyyy,mm,dd,slug}'),
 	page: router.addRoute('http://localhost{/page}'),
 	file: router.addRoute('http://localhost/static{/path}'),
@@ -50,9 +45,48 @@ const routes = {
 	css: router.addRoute('http://localhost/static{/path}.css'),
 	js: router.addRoute('http://localhost/static{/path}.js'),
 };
-console.log(routes.page.toString({ page: 'about' }));
+console.log(routes.png.toString({path: ['hero']}));
+// Output: http://localhost/static/hero.png
 </pre>
+			<p>The full feature set of <a href="https://tools.ietf.org/html/rfc6570">RFC 6570 URI templates</a> is available for use, including substrings and all the operators.</p>
+		</section>
 
+		<section id="usage-router">
+			<h3>Routing a set of URI Templates</h3>
+			<p>The <a href="api.xhtml#api-router">Router</a> interface collects multiple Route instances, and can route a URI to the closest matching Route, as well as the parameters that can be used to fill it to reproduce the given URI.</p>
+			<p>Use <code>addRoute</code> to insert a URI Template or a Route object into the routing table. Two routes cannot partially overlap, each route must be completely disjoint, a strict subset, or a strict superset to all other routes.</p>
+			<pre>
+const router = new Router;
+router.addRoute('http://localhost/');
+router.addRoute('http://localhost/blog{/yyyy,mm,dd,slug}');
+router.addRoute('http://localhost{/page}');
+router.addRoute('http://localhost/static{/path}');
+router.addRoute('http://localhost/static{/path}.png');
+router.addRoute('http://localhost/static{/path}.css');
+router.addRoute('http://localhost/static{/path}.js');
+
+const match = router.resolveURI('http://localhost/blog/1999/10/30/homesteading%20the%20noosphere');
+console.log(match.params);
+/* Output:
+{
+	yyyy: "1999",
+	mm: "10",
+	dd: "30",
+	slug: "homesteading the noosphere",
+}
+*/
+</pre>
+		</section>
+
+		<section id="usage-route-parent">
+			<h3>Manually setting a parent route</h3>
+			<p>The router will automatically match the route that matches the smallest set of URIs, so that no other route is a strict subset. You can force this behavior by using the <code>parent</code> option when creating a Route:</p>
+			<pre>
+const router = new Router;
+const blog = router.addRoute('http://localhost/blog{/yyyy,slug}');
+const blog_html = router.addRoute('http://localhost/blog{/yyyy,slug}.html', {parent: blog});
+</pre>
+			<p>This will force the "blog_html" route to only match routes that are a subset of "blog". Without this option, the URI &lt;http://localhost/blog.html&gt; would match blog_html but not blog, and instead of blog_html being a strict subset, the routes would partially overlap.</p>
 		</section>
 
 		<section id="usage-router">
@@ -67,7 +101,9 @@ router.addRoute('http://localhost/static{/path}.png', {}, 'png'),
 router.addRoute('http://localhost/static{/path}.css', {}, 'css'),
 router.addRoute('http://localhost/static{/path}.js', {}, 'js'),
 
-console.log(router.getValue('page').toString({ page: 'about' }));
+const page = router.getValue('page');
+console.log(page.toString({ page: 'about' }));
+// Output: "http://localhost/about"
 </pre>
 				
 		</section>

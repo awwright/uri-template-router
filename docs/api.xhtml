@@ -28,11 +28,14 @@
 
 		<section id="api-router">
 			<h3>Router</h3>
-			<p></p>
+			<p>Computes a routing table for several Routes and evaluates matches for input URIs.</p>
 			<dl>
 				<dt><code>clear()</code></dt>
 				<dd>Reset the Router to have zero entries.</dd>
 
+				<dt><code>addTemplate(pattern, options, matchValue)</code></dt>
+				<dd>Adds a route to the router. Returns the Route object that was inserted. <code>pattern</code> may be a Route object or a URI Template string. Options is passed to the new Route object, if created. The route cannot partially overlap any other route (there cannot be two routes A and B so that one URI matches only A, and  URI matches only B, and some third URI matches both A and B.)</dd>
+				
 				<dt><code>hasRoute(route)</code></dt>
 				<dd>Test if the router has the specified <code>Route</code>.</dd>
 
@@ -57,6 +60,19 @@
 			<h3>Route</h3>
 			<p>A <code>Route</code> identifies a single URI Template. It can be inserted into a <code>Router</code>, or can be supplied data to expand into a full URI.</p>
 			<dl>
+				<dt><code>new Route(uriTemplate, options)</code></dt>
+				<dd>
+					Options may have the following properties:
+					<dl>
+						<dt><code>parent</code></dt>
+						<dd>Route. Take the intersection of the provided route, which forces this route to be a subset of it.</dd>
+						<dt><code>matchValue</code></dt>
+						<dd>any. An arbitrary value to associate with this Route, available to the application when this route is selected as a match.</dd>
+					</dl>
+		
+
+				</dd>
+
 				<dt><code>uriTemplate</code></dt>
 				<dd>The operator character opening the expression, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
 
@@ -70,7 +86,7 @@
 
 		<section id="api-expression">
 			<h3>Expression</h3>
-			<p>An expression within a URI Template. Instances carry the following properties:</p>
+			<p>Represents each curly-braced segment in a URI Template. Instances carry the following properties:</p>
 			<dl>
 				<dt><code>operatorChar</code></dt>
 				<dd>The operator character opening the expression, such as <code>+</code> or <code>?</code>, or an empty string if none.</dd>
