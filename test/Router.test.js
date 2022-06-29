@@ -13,8 +13,8 @@ describe('Router', function(){
 		assert(typeof r.addTemplate === 'function');
 	});
 	it('Router#addTemplate() error on overlap', function(){
+		r.addTemplate('{+path}.html');
 		assert.throws(function(){
-			r.addTemplate('{+path}.html');
 			r.addTemplate('{path}');
 		}, err => err instanceof Error);
 	});
@@ -32,6 +32,16 @@ describe('Router', function(){
 		}, err => err instanceof Error);
 		// URI Templates with repeated variables are cool though
 		new Route('{+path}{path}');
+	});
+	it('Router#addTemplate() errors on duplicate routes', function(){
+		r.addTemplate('/foo');
+		r.addTemplate('/{bar}');
+		assert.throws(function(){
+			r.addTemplate('/foo');
+		}, err => err instanceof Error);
+		assert.throws(function(){
+			r.addTemplate('/{baz}');
+		}, err => err instanceof Error);
 	});
 	it('Router#resolveURI()', function(){
 		const route = r.addTemplate('http://localhost/~{name}', {}, 'foo');

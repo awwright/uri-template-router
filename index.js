@@ -608,8 +608,13 @@ Router.prototype.addTemplate = function addTemplate(uriTemplate, options, matchV
 		const route_siblings = [], route_children = [];
 		for(var i=0; i<compares.length; i++){
 			if(compares[i][0]===true){
-				// Move subsets into this route
-				route_children.push(current.children[i]);
+				if(compares[i][1]===true){
+					// This is the same as an existing route
+					throw new Error('Inserted route '+uriTemplate+' is the same as other route '+current.children[i].uriTemplate);
+				}else{
+					// Move subsets into this route
+					route_children.push(current.children[i]);
+				}
 			}else if(compares[i][2]===true){
 				// Record disjoint nodes and make them siblings
 				route_siblings.push(current.children[i]);
