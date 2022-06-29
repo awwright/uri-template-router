@@ -146,8 +146,8 @@ module.exports.Route = Route;
 function Route(uriTemplate, options, matchValue){
 	if(typeof uriTemplate!=='string') throw new Error('Expected `uriTemplate` to be a string');
 	this.uriTemplate = uriTemplate;
-	this.options = options;
-	this.matchValue = matchValue;
+	this.options = options || {};
+	this.matchValue = this.options.matchValue!==undefined ? this.options.matchValue : matchValue;
 
 	// Parse the URI template
 	var varnames = this.varnames = {};
