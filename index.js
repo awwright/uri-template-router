@@ -178,7 +178,7 @@ function Route(uriTemplate, options, matchValue){
 			if(!operator){
 				throw new Error('Unknown expression operator: '+JSON.stringify(operatorChar));
 			}
-			const expression = Expression.from(patternBody, expressionList.length);
+			const expression = Expression.from(patternBody);
 			expression.variableList.forEach(function(varspec){
 				varspec.index = Object.keys(varnames).length;
 				varnames[varspec.varname] = varspec;
@@ -293,7 +293,7 @@ Route.prototype.decode = function decode(uri){
 }
 
 module.exports.Expression = Expression;
-function Expression(operatorChar, variableList, index){
+function Expression(operatorChar, variableList){
 	if(typeof operatorChar !== 'string') throw new Error('Expected `operatorChar` to be a string');
 	if(!operators[operatorChar]) throw new Error('Unknown operator: '+JSON.stringify(operatorChar));
 	variableList.forEach(function(v){
@@ -304,9 +304,8 @@ function Expression(operatorChar, variableList, index){
 	this.separator = operators[operatorChar].separator;
 	this.range = operators[operatorChar].range;
 	this.variableList = variableList;
-	this.index = index;
 }
-Expression.from = function(patternBody, index){
+Expression.from = function(patternBody){
 	// If the first character is part of a valid variable name, assume the default operator
 	// Else, assume the first character is a operator
 	var operatorChar = patternBody[0].match(/[a-zA-Z0-9_%]/) ? '' : patternBody[0] ;
@@ -318,7 +317,7 @@ Expression.from = function(patternBody, index){
 		.substring(operatorChar.length)
 		.split(/,/g)
 		.map( Variable.from.bind(null, operatorChar) );
-	return new Expression(operatorChar, variableList, index);
+	return new Expression(operatorChar, variableList);
 };
 Expression.prototype.toString = function toString(params){
 	const operator = operators[this.operatorChar];
