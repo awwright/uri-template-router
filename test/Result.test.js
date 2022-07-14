@@ -27,21 +27,12 @@ describe('Result', function(){
 		var route5 = route4.next();
 		assert.equal(route5, undefined);
 	});
-	it('Result#rewrite (string argument)', function(){
+	it('Result#rewrite', function(){
 		var router = new Router;
 		router.addTemplate('http://localhost/{file}.txt');
 		var route1 = router.resolveURI('http://localhost/123.txt');
 		var route2i = new Route('http://localhost/{file}.html');
 		var route2 = route1.rewrite(route2i);
-		assert.strictEqual(route2.uri, 'http://localhost/123.html');
-		assert.strictEqual(route2.template, 'http://localhost/{file}.html');
-		assert.strictEqual(route2.params.file, '123');
-	});
-	it('Result#rewrite (Route argument)', function(){
-		var router = new Router;
-		router.addTemplate('http://localhost/{file}.txt');
-		var route1 = router.resolveURI('http://localhost/123.txt');
-		var route2 = route1.rewrite('http://localhost/{file}.html');
 		assert.strictEqual(route2.uri, 'http://localhost/123.html');
 		assert.strictEqual(route2.template, 'http://localhost/{file}.html');
 		assert.strictEqual(route2.params.file, '123');

@@ -524,9 +524,9 @@ function Result(router, uri, options, history, final_states){
 	this.final_states = final_states;
 }
 
-Result.prototype.rewrite = function rewrite(uriTemplate, options, name){
-	if(typeof uriTemplate==='string'){
-		uriTemplate = new Route(uriTemplate, options, name);
+Result.prototype.rewrite = function rewrite(uriTemplate, options){
+	if(!(uriTemplate instanceof Route)){
+		throw new Error('Expected argument `uriTemplate` to be a Route');
 	}
 	var uri = uriTemplate.gen(this.params);
 	return new Result(this.router, uri, options, [], [ { route: uriTemplate } ]);
