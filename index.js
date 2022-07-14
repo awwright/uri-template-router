@@ -669,6 +669,7 @@ Router.prototype.resolveURI = function resolveString(uri, flags){
 	const self = this;
 	// 0 is the initial state
 	var state = this.states[0];
+	if(!state) return;
 	const history = [{state}];
 	const pctenc = /^%[0-9A-F]{2}$/;
 

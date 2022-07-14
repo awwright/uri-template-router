@@ -74,4 +74,7 @@ describe('Router', function(){
 		r.addTemplate('http://localhost/~{name}', {}, 'foo');
 		assert(r.hasValue('foo'));
 	});
+	it('Router#resolveURI() with zero routes', function(){
+		r.resolveURI('http://example.com/foo');
+	});
 });
