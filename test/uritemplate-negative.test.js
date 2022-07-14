@@ -9,7 +9,7 @@ var files = [
 ];
 
 files.forEach(function(filename){
-	var json = fs.readFileSync('test/'+filename);
+	var json = fs.readFileSync(__dirname +'/'+filename);
 	var data = JSON.parse(json);
 	describe(filename, function(){
 		Object.keys(data).forEach(function(sectionName){

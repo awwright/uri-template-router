@@ -673,7 +673,6 @@ Router.prototype.resolveURI = function resolveString(uri, flags){
 	const pctenc = /^%[0-9A-F]{2}$/;
 
 	for(var offset = 0; state && offset < uri.length; offset++){
-		if(!state) break;
 		const symbol = uri[offset]==='%' ? uri.slice(offset, offset+3) : uri[offset];
 		// Double-check that pct-encoded sequences are valid (in addition to what the FSM should prohibit)
 		if(symbol.length===3){
@@ -685,6 +684,7 @@ Router.prototype.resolveURI = function resolveString(uri, flags){
 		const nextStateId = state.get(symbol);
 		if(nextStateId === undefined) return;
 		state = this.states[nextStateId];
+		if(!state) return;
 		history.push({symbol, nextStateId, state});
 	}
 
