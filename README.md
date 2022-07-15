@@ -196,6 +196,10 @@ It supports all the standard URI Template features.
 
 Without `params`, generates the URI Template as a string.
 
+### Route#resolveURI(uri, options)
+
+Similar to `Router#resolveURI`, but only tests this route.
+
 ### Result
 
 Provides following properties:

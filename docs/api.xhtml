@@ -53,6 +53,9 @@
 
 				<dt><code>hasValue(matchValue)</code></dt>
 				<dd>Test if the router has a <code>Route</code> with the given <code>matchValue</code>.</dd>
+
+				<dt><code>resolveURI(uri)</code></dt>
+				<dd>Determine if the routing table has a match for <code>uri</code>. Returns a <a href="#api-result"><code>Result</code></a> object with the best match.</dd>
 			</dl>
 		</section>
 
@@ -67,7 +70,7 @@
 						<dt><code>parent</code></dt>
 						<dd>Route. Take the intersection of the provided route, which forces this route to be a subset of it.</dd>
 						<dt><code>matchValue</code></dt>
-						<dd>any. An arbitrary value to associate with this Route, available to the application when this route is selected as a match.</dd>
+						<dd>any. An arbitrary value to associate with this Route, available to the application when this route is selected as a match, or <code>undefined</code> if no match.</dd>
 					</dl>
 		
 
@@ -81,6 +84,9 @@
 
 				<dt><code>toString(params)</code></dt>
 				<dd>Returns a string of the URI Template, expanded with the given <code>params</code>.</dd>
+
+				<dt><code>resolveURI(uri)</code></dt>
+				<dd>Determine if this route is a match for <code>uri</code>. Returns a <a href="#api-result"><code>Result</code></a> object with the match results, or <code>undefined</code> if no match.</dd>
 			</dl>
 		</section>
 
