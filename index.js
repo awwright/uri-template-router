@@ -80,7 +80,7 @@ function Router(){
 
 Router.prototype.clear = function clear(){
 	this.nid = 0;
-	this.states = [];
+	this.fsm = [];
 	this.routeSet = new Set;
 	this.templateRouteMap = new Map;
 	this.valueRouteMap = new Map;
@@ -194,6 +194,7 @@ function Route(uriTemplate, options, matchValue){
 		}
 	}
 
+	this.finalMatch = new FinalMatch(this);
 	this.fsm = reduce(this.toFSM());
 
 	function partial_intersect(states){
@@ -291,6 +292,39 @@ Route.prototype.decode = function decode(uri){
 	}
 	return result;
 }
+
+// This is slightly different than Router#resolveURI
+// Route does not store detailed final state data, only a boolean
+Route.prototype.resolveURI = function resolveString(uri, flags){
+	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
+	const self = this;
+	// 0 is the initial state
+	var state = this.fsm[0];
+	if(!state) return;
+	const history = [{state}];
+	const pctenc = /^%[0-9A-F]{2}$/;
+
+	for(var offset = 0; state && offset < uri.length; offset++){
+		const symbol = uri[offset]==='%' ? uri.slice(offset, offset+3) : uri[offset];
+		// Double-check that pct-encoded sequences are valid (in addition to what the FSM should prohibit)
+		if(symbol.length===3){
+			if(!pctenc.test(symbol)){
+				return;
+			}
+			offset += 2;
+		}
+		const nextStateId = state.get(symbol);
+		if(nextStateId === undefined) return;
+		state = this.fsm[nextStateId];
+		if(!state) return;
+		history.push({symbol, nextStateId, state});
+	}
+
+	// With all of the characters parsed, the current "state" contains the solution
+	const solution = state.final;
+	if(!solution) return;
+	return new Result(self, uri, flags, history, [self.finalMatch]);
+};
 
 module.exports.Expression = Expression;
 function Expression(operatorChar, variableList){
@@ -641,7 +675,7 @@ Router.prototype.reindex = function reindex(){
 	}
 	visit(this.hierarchy);
 
-	this.states = union(this.routes.map(r => r.fsm), order_map);
+	this.fsm = union(this.routes.map(r => r.fsm), order_map);
 };
 
 // like resolveString, but additionally verify that the URI matches the legal HTTP form
@@ -668,7 +702,7 @@ Router.prototype.resolveURI = function resolveString(uri, flags){
 	if(typeof uri!=='string') throw new Error('Expected arguments[0] `uri` to be a string');
 	const self = this;
 	// 0 is the initial state
-	var state = this.states[0];
+	var state = this.fsm[0];
 	if(!state) return;
 	const history = [{state}];
 	const pctenc = /^%[0-9A-F]{2}$/;
@@ -684,7 +718,7 @@ Router.prototype.resolveURI = function resolveString(uri, flags){
 		}
 		const nextStateId = state.get(symbol);
 		if(nextStateId === undefined) return;
-		state = this.states[nextStateId];
+		state = this.fsm[nextStateId];
 		if(!state) return;
 		history.push({symbol, nextStateId, state});
 	}
