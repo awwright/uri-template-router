@@ -46,7 +46,7 @@ function refreshResults(){
 		li.textContent = resultItem.template + ' ⟵ ' + JSON.stringify(resultItem.params);
 		resultList.appendChild(li);
 	}
-	document.getElementById('result-graph').textContent = toViz(router.states);
+	document.getElementById('result-graph').textContent = toViz(router.fsm);
 
 	const header = document.getElementById('sort-header');
 	const tbody = document.getElementById('sort-tbody');
