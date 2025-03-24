@@ -64,16 +64,6 @@ function encodeURI_literal(v){
 	});
 }
 
-function Operator(prefix, separator, delimiter, range, named, form){
-	this.prefix = prefix;
-	this.separator = separator;
-	this.delimiter = delimiter;
-	this.range = range;
-	this.named = named;
-	this.form = form;
-	this.encode = (range===RANGE.URI) ? encodeURI_literal : encodeURIComponent_v;
-}
-
 function Router(){
 	this.clear();
 }
