@@ -32,7 +32,12 @@ function range_fsm(str, uriTemplate, offset){
 }
 
 function encodeURIComponent_v(v){
-	return encodeURIComponent(v).replace(/!/g, '%21');
+	return encodeURIComponent(v)
+		.replace(/!/g, '%21')
+		.replace(/'/g, '%27')
+		.replace(/\(/g, '%28')
+		.replace(/\)/g, '%29')
+		.replace(/\*/g, '%2A');
 }
 
 function Operator(prefix, separator, delimiter, range, named, form){
@@ -149,7 +154,7 @@ function Route(uriTemplate, options, matchValue){
 		if(chr==='%'){
 			// A pct-encoded sequence is treated as a single character for efficiency
 			// (this more than halves the size of the tree)
-			if(uriTemplate.substring(uri_i, uri_i+3).match(/^%[0-9A-F]{2}$/)){
+			if(uriTemplate.substring(uri_i, uri_i+3).match(/^%[0-9A-Fa-f]{2}$/)){
 				chr += uriTemplate[uri_i+1] + uriTemplate[uri_i+2];
 				uri_i += 2;
 			}else{
@@ -275,7 +280,7 @@ Route.prototype.decode = function decode(uri){
 						result[varname] = value.split(segment.separator).map(decodeURIComponent);
 					}
 				}else if(value){
-					result[varname] = decodeURI(value);
+					result[varname] = decodeURIComponent(value);
 				}
 			}
 		}
